@@ -1,0 +1,136 @@
+# Copyright © 2026 Georges Bou Ghantous. All Rights Reserved.
+# SHIELD® — Structured Website Security & Resilience Assessment Framework
+# This file is part of SHIELD Scanner and is subject to the terms of the
+# All Rights Reserved license included in the LICENSE file.
+
+name: SHIELD Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Target URL (https://example.com)"
+        required: true
+        type: string
+      mode:
+        description: "posture|authorized"
+        required: true
+        default: "posture"
+        type: choice
+        options: [posture, authorized]
+      profile:
+        description: "quick|standard|deep"
+        required: true
+        default: "standard"
+        type: choice
+        options: [quick, standard, deep]
+      auth_branch:
+        description: "Ephemeral auth branch created by the site (auth/<runId>)"
+        required: true
+        type: string
+      auth_path:
+        description: "Path to authorization file within the repo (auth_uploads/<runId>/file.pdf)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: shield-scan
+  cancel-in-progress: false
+
+run-name: "SHIELD Scan — ${{ inputs.auth_branch }}"
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Checkout authorization branch
+        if: ${{ inputs.mode == 'authorized' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.auth_branch }}
+          path: auth_branch
+          fetch-depth: 1
+
+      - name: Verify authorization file exists
+        if: ${{ inputs.mode == 'authorized' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="auth_branch/${{ inputs.auth_path }}"
+          if [[ -z "${{ inputs.auth_path }}" ]]; then
+            echo "ERROR: auth_path missing for authorized mode"
+            exit 2
+          fi
+          if [[ ! -f "${AUTH_FILE}" ]]; then
+            echo "ERROR: Authorization file not found at ${AUTH_FILE}"
+            ls -la auth_branch || true
+            exit 2
+          fi
+          echo "Authorization file found."
+          sha256sum "${AUTH_FILE}" | tee output/authorization.sha256 || true
+
+      - name: Setup Node (for renderer)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run SHIELD + render HTML
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        uses: ./action
+        with:
+          target_url: ${{ inputs.target_url }}
+          mode: ${{ inputs.mode }}
+          profile: ${{ inputs.profile }}
+          auth_file_path: ${{ inputs.mode == 'authorized' && format('auth_branch/{0}', inputs.auth_path) || '' }}
+          image: ${{ secrets.GHCR_IMAGE || 'ghcr.io/Georges034302/SHIELD-framework:latest' }}
+
+      - name: Upload artifacts (MD/JSON/HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shield-report
+          path: |
+            output/report.md
+            output/report.json
+            output/report.html
+
+      - name: Prepare Pages content
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Create pages directory structure
+          mkdir -p pages/latest
+          
+          # Copy all site files to pages/ root (index.html, app.js, styles.css)
+          cp -r site/* pages/
+          
+          # Copy generated report to latest/
+          cp output/report.html pages/latest/report.html
+          
+          # Optional: keep a run history folder by run id (auth_branch label)
+          SAFE_RUN="${{ inputs.auth_branch }}"
+          SAFE_RUN="${SAFE_RUN//\//_}"
+          mkdir -p "pages/runs/${SAFE_RUN}"
+          cp output/report.html "pages/runs/${SAFE_RUN}/report.html"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

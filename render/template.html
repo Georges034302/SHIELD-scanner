@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- 
+  Copyright © 2026 Georges Bou Ghantous. All Rights Reserved.
+  SHIELD® — Structured Website Security & Resilience Assessment Framework
+  This file is part of SHIELD Scanner and is subject to the terms of the
+  All Rights Reserved license included in the LICENSE file.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SHIELD Report Summary</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#fff;color:#0f172a;}
+    header{padding:22px 18px;border-bottom:1px solid #e2e8f0;}
+    main{padding:18px;max-width:1100px;margin:0 auto;}
+    h1{margin:0 0 6px 0;font-size:22px;}
+    .muted{color:#64748b}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:14px 0;}
+    .card{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc;}
+    .k{font-size:12px;color:#64748b}
+    .v{font-size:18px;font-weight:700;margin-top:4px}
+    ul{margin:8px 0 0 18px}
+    table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+    th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:13px;vertical-align:top}
+    th{background:#f1f5f9;font-size:12px;color:#334155;text-transform:uppercase;letter-spacing:.03em}
+    tr:last-child td{border-bottom:none}
+    code{background:#eef2ff;padding:1px 6px;border-radius:8px}
+    .sev{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700;font-size:12px}
+    .sev-critical{background:#fee2e2;color:#991b1b}
+    .sev-high{background:#ffedd5;color:#9a3412}
+    .sev-med{background:#fef9c3;color:#854d0e}
+    .sev-low{background:#e0f2fe;color:#075985}
+    .sev-info{background:#e2e8f0;color:#334155}
+    .evidence{max-width:520px;word-break:break-word}
+    footer{padding:14px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>SHIELD Report Summary</h1>
+  <div class="muted">Accurate summary rendered from <b>report.json</b> (source of truth).</div>
+</header>
+
+<main>
+  <div class="cards">
+    <div class="card">
+      <div class="k">Grade</div>
+      <div class="v">{{GRADE}}</div>
+    </div>
+    <div class="card">
+      <div class="k">Score</div>
+      <div class="v">{{SCORE}}</div>
+    </div>
+    <div class="card">
+      <div class="k">Mode</div>
+      <div class="v">{{MODE}}</div>
+    </div>
+    <div class="card">
+      <div class="k">Time</div>
+      <div class="v" style="font-size:12px;font-weight:600">{{STARTED}} → {{FINISHED}}</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="k">Findings by Step</div>
+      <ul>{{STEPS}}</ul>
+    </div>
+    <div class="card">
+      <div class="k">Findings by Severity</div>
+      <ul>{{SEVERITIES}}</ul>
+    </div>
+  </div>
+
+  <h2 style="margin-top:18px">Top Critical/High Findings</h2>
+  {{TOP_FINDINGS_TABLE}}
+</main>
+
+<footer>
+  <div>Rule: JSON = truth · MD = full narrative · HTML = curated summary from JSON only.</div>
+  <div style="margin-top:8px;font-size:11px">
+    Copyright © 2026 Georges Bou Ghantous. All Rights Reserved. SHIELD® — Structured Website Security & Resilience Assessment Framework
+  </div>
+</footer>
+</body>
+</html>

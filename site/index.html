@@ -1,0 +1,112 @@
+<!doctype html>
+<!-- 
+  Copyright © 2026 Georges Bou Ghantous. All Rights Reserved.
+  SHIELD® — Structured Website Security & Resilience Assessment Framework
+  This file is part of SHIELD Scanner and is subject to the terms of the
+  All Rights Reserved license included in the LICENSE file.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SHIELD Scanner</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="wrap">
+    <h1>SHIELD Scanner</h1>
+    <p class="muted">
+      Upload a written authorization file → trigger a GitHub Actions scan → publish accurate HTML summary (from JSON).
+    </p>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+      <h2>1) Connect to GitHub</h2>
+      <label>
+        Repository (owner/name)
+        <input id="repo" placeholder="Georges034302/SHIELD-scanner" />
+      </label>
+
+      <label>
+        GitHub Token (MVP)
+        <input id="token" type="password" placeholder="ghp_..." />
+        <div class="hint">Needs <code>repo</code> scope (MVP). In production, use a GitHub App OAuth flow.</div>
+      </label>
+
+      <label>
+        Workflow file name
+        <input id="workflow" value="scan.yml" />
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>2) Configure Scan</h2>
+      <label>
+        Target URL
+        <input id="targetUrl" placeholder="https://example.com" />
+      </label>
+
+      <label>
+        Mode
+        <select id="mode">
+          <option value="posture" selected>posture (default, safe)</option>
+          <option value="authorized">authorized (requires written authorization + risk flag)</option>
+        </select>
+      </label>
+
+      <label>
+        Profile
+        <select id="profile">
+          <option value="standard" selected>standard</option>
+          <option value="quick">quick</option>
+          <option value="deep">deep</option>
+        </select>
+        <div class="hint">Profiles map to framework args (you can adjust in workflow/action).</div>
+      </label>
+
+      <label class="file">
+        Written Authorization File (required for <b>authorized</b>)
+        <input id="authFile" type="file" accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg" />
+      </label>
+
+      <div class="row">
+        <button id="startBtn">Submit Authorization & Start Scan</button>
+        <button id="resetBtn" class="secondary">Reset</button>
+      </div>
+
+      <div id="status" class="status muted">Idle.</div>
+    </section>
+
+    <section class="card">
+      <h2>3) Progress & Results</h2>
+
+      <div class="kv">
+        <div class="k">Run ID</div><div class="v" id="runId">—</div>
+        <div class="k">Auth Branch</div><div class="v" id="authBranch">—</div>
+        <div class="k">Workflow Run</div><div class="v" id="runLink">—</div>
+        <div class="k">Artifacts</div><div class="v" id="artifactsLink">—</div>
+        <div class="k">HTML (Pages)</div><div class="v" id="pagesLink">—</div>
+      </div>
+
+      <div class="hint">
+        Live streaming from a static site is not possible without a backend.
+        This MVP uses polling for workflow status, and links to logs. The framework can print per-check events into logs.
+      </div>
+
+      <pre id="log" class="log">Waiting…</pre>
+    </section>
+  </main>
+
+  <footer class="wrap muted">
+    <small>
+      Rule: JSON is truth, MD is full narrative, HTML is curated summary from JSON only.
+    </small>
+    <small style="display:block;margin-top:8px">
+      Copyright © 2026 Georges Bou Ghantous. All Rights Reserved. SHIELD® — Structured Website Security & Resilience Assessment Framework
+    </small>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
