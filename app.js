@@ -307,15 +307,20 @@ async function startScan() {
   try {
     const repoFull = $("repoDisplay").textContent.trim();
     const token = $("token").value.trim();
+    const targetUrl = $("targetUrl").value.trim();
+    const authFile = $("authFile").files?.[0] || null;
     
-    // Clear token immediately from DOM for security
+    // Clear sensitive fields immediately from DOM for security
     const tokenField = $("token");
     if (tokenField) tokenField.value = "";
+    const targetUrlField = $("targetUrl");
+    if (targetUrlField) targetUrlField.value = "";
+    const authFileField = $("authFile");
+    if (authFileField) authFileField.value = "";
+    
     const workflowFile = "scan.yml";
-    const targetUrl = $("targetUrl").value.trim();
     const mode = $("mode").value;
     const profile = $("profile").value;
-    const authFile = $("authFile").files?.[0] || null;
 
     ensure(repoFull.length > 0, "Repository name is missing.");
     ensure(repoFull.includes("/"), "Repository format invalid. Expected 'owner/name'.");
@@ -409,9 +414,13 @@ function resetUi() {
   $("artifactsLink").textContent = "—";
   $("log").textContent = "Waiting…";
   
-  // Clear token field for security
+  // Clear input fields
   const tokenField = $("token");
   if (tokenField) tokenField.value = "";
+  const targetUrlField = $("targetUrl");
+  if (targetUrlField) targetUrlField.value = "";
+  const authFileField = $("authFile");
+  if (authFileField) authFileField.value = "";
 
   // Summary reset
   safeText($("sumGrade"), "—");
