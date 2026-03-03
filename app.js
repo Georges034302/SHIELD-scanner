@@ -313,7 +313,8 @@ async function startScan() {
     const profile = $("profile").value;
     const authFile = $("authFile").files?.[0] || null;
 
-    ensure(repoFull.includes("/"), "Repository must be in the form owner/name.");
+    ensure(repoFull.length > 0, "Repository field is empty. Enter your repository in the form 'owner/name'.");
+    ensure(repoFull.includes("/"), "Repository must be in the form 'owner/name' (e.g., 'Georges034302/SHIELD-scanner').");
     ensure(token.length > 0, "GitHub token is required (MVP).");
     ensure(targetUrl.length > 0, "Target URL is required.");
     if (mode === "authorized") ensure(authFile, "Authorization file is required for authorized mode.");
@@ -428,6 +429,16 @@ function resetUi() {
 }
 
 function wireEvents() {
+  // Auto-detect repository from GitHub Pages URL
+  const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
+  const match = window.location.href.match(pagesPattern);
+  
+  const repoField = $("repo");
+  if (match && repoField) {
+    const [, owner, repo] = match;
+    repoField.value = `${owner}/${repo}`;
+  }
+
   $("startBtn")?.addEventListener("click", startScan);
   $("resetBtn")?.addEventListener("click", resetUi);
   $("refreshBtn")?.addEventListener("click", loadLatestReport);
