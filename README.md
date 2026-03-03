@@ -42,33 +42,38 @@ gh repo fork Georges034302/SHIELD-scanner --clone
 ## How It Works
 
 ```
-User opens web page
+User opens scanner at github.io URL
   ↓
-Paste GitHub token + configure scan
+Modern dashboard with sidebar + main content:
+  - GitHub Connection (token, repo)
+  - Scan Configuration (target, mode, profile)
+  - Live console + status
+  - Report summary (grade, findings, severity breakdown)
   ↓
-Upload authorization (if authorized mode)
+Submit scan:
+  - Token used in-browser only (not stored)
+  - Creates ephemeral auth/<runId> branch
+  - Uploads authorization file (if required)
+  - Dispatches workflow via GitHub API
   ↓
-JavaScript calls GitHub API:
-  - Create branch auth/<runId>
-  - Commit authorization file
-  - Dispatch workflow
+GitHub Actions workflow:
+  - Pulls SHIELD Framework container
+  - Executes 69 security checks
+  - Generates reports (JSON/MD/HTML)
+  - Deploys UI + reports to Pages
   ↓
-GitHub Actions runs:
-  - Pull SHIELD Framework container
-  - Execute scan
-  - Generate reports (JSON/MD/HTML)
-  - Upload to artifacts + Pages
-  ↓
-User views results:
-  - /latest/report.html on Pages
-  - Download artifacts from workflow
+Results:
+  - Dashboard auto-refreshes from latest/report.json
+  - Standalone report at /latest/report.html (shareable)
+  - Download JSON/MD from artifacts
 ```
 
-**Stack:**
-- Frontend: Vanilla HTML/CSS/JS (no framework)
-- Backend: GitHub Actions + SHIELD Framework container
-- Storage: GitHub Pages + Artifacts
-- Auth: GitHub Personal Access Token (MVP)
+**Architecture:**
+- **Frontend:** Vanilla HTML/CSS/JS dashboard (index.html, app.js, styles.css)
+- **Reports:** JSON-driven UI + standalone HTML report (render/html_from_json.js)
+- **Backend:** GitHub Actions + SHIELD Framework container
+- **Storage:** GitHub Pages (UI + reports) + Artifacts (90 days)
+- **Auth:** GitHub PAT in-browser (MVP, cleared after use)
 
 ---
 
@@ -93,16 +98,19 @@ User views results:
 **2. Fill in the form:**
 - Repository: `your-username/SHIELD-scanner`
 - GitHub Token: [Generate token](https://github.com/settings/tokens) with `repo` scope
-- Target URL: `https://example.com`
-- Mode: `posture` or `authorized`
+  - 🔒 Token is used **in-browser only** (not stored, cleared after use)
+  - Only transmitted to `api.github.com` via HTTPS
+- Target URL: `https://example.com` (⚠️ only scan sites you own or have written authorization)
+- Mode: `posture` (safe) or `authorized` (active testing)
 - Profile: `quick`, `standard`, or `deep`
 - Authorization file: Upload PDF/TXT (required for authorized mode)
 
-**3. Submit** and watch progress in the log panel
+**3. Submit** and watch live progress in console
 
 **4. Access reports:**
-- HTML: `/latest/report.html` on Pages
-- Artifacts: Download from GitHub Actions run
+- Dashboard: Auto-refreshes from `latest/report.json`
+- Standalone: `/latest/report.html` (shareable link)
+- Downloads: JSON/MD from GitHub Actions artifacts
 
 See [docs/usage.md](docs/usage.md) for detailed instructions.
 
@@ -141,12 +149,25 @@ Read more about SHIELD Framework modes in the [Framework documentation](https://
 ## Project Structure
 
 ```
-site/               ← Web UI (HTML/CSS/JS)
-.github/workflows/  ← GitHub Actions workflow
-action/             ← Container execution scripts
-render/             ← Report HTML rendering
-docs/               ← Documentation
+├── index.html              ← Scanner UI (interactive dashboard)
+├── app.js                  ← Application logic (GitHub API, report rendering)
+├── styles.css              ← UI styling (dark theme)
+├── .github/workflows/
+│   ├── deploy-ui.yml       ← Deploy UI on push (cold start)
+│   └── scan.yml            ← Run scan + deploy reports
+├── action/                 ← Container execution scripts
+│   └── scripts/
+│       ├── run_container.sh
+│       └── render_html.sh
+├── render/                 ← Standalone report generation
+│   ├── html_from_json.js   ← JSON → HTML converter
+│   └── template.html       ← Report template (shareable)
+└── docs/                   ← Documentation
 ```
+
+**Two HTML pages:**
+- **index.html** — Interactive scanner dashboard (you interact here)
+- **report.html** — Standalone report page (generated, shareable)
 
 See [docs/architecture.md](docs/architecture.md) for technical details.
 
@@ -166,10 +187,15 @@ See [docs/usage.md](docs/usage.md) for authorization document template.
 
 ## Security Notes
 
-- **Token:** MVP uses browser-based GitHub token (production should use OAuth)
+- **Token handling:** 
+  - Used in-browser only for GitHub API calls
+  - **Not stored** in localStorage, sessionStorage, or cookies
+  - Cleared from password field after scan completes
+  - Only sent to `api.github.com` via HTTPS
+  - Production should use GitHub App OAuth flow
 - **Privacy:** Use private repositories for sensitive assessments  
 - **Cleanup:** Delete auth branches after scans: `git push origin --delete auth/<runId>`
-- **Retention:** Artifacts auto delete after 90 days
+- **Retention:** Artifacts auto-delete after 90 days, Pages persist indefinitely
 
 See [docs/security.md](docs/security.md) for security best practices.
 

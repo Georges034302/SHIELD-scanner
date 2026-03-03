@@ -9,7 +9,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'site/**'
+      - 'index.html'
+      - 'app.js'
+      - 'styles.css'
       - '.github/workflows/deploy-ui.yml'
 
 permissions:
@@ -38,7 +40,8 @@ jobs:
           mkdir -p pages/latest
           
           # Copy UI files to pages root
-          cp -r site/* pages/
+          cp index.html app.js styles.css pages/
+          cp -r logos pages/
           
           # Create placeholder for latest report if not exists
           if [ ! -f pages/latest/report.json ]; then

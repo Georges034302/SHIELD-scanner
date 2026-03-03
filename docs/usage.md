@@ -11,13 +11,18 @@ This document explains how to use the SHIELD Scanner web interface to run securi
 ## Overview
 
 SHIELD Scanner is a **GitHub Pages + GitHub Actions** deployment that provides:
-- Static web interface for initiating scans
-- Authorization file upload and tracking
+- Modern interactive dashboard (sidebar + main content)
+- Real-time scan execution and status monitoring
+- JSON-driven report rendering with severity breakdown
+- Authorization file upload via ephemeral branches
 - Automated workflow execution via GitHub Actions
-- Report generation (JSON, Markdown, HTML)
-- GitHub Pages hosting for scan results
+- Dual reports: Interactive dashboard + standalone HTML report
 
 **No server infrastructure required** — everything runs on GitHub's platform.
+
+**Two HTML pages:**
+1. **index.html** — Interactive scanner dashboard (submit scans, view live results)
+2. **report.html** — Standalone report page (generated per scan, shareable)
 
 ---
 
@@ -45,6 +50,11 @@ Workflow file: scan.yml
 - For MVP deployment, you need a Personal Access Token with `repo` scope
 - Generate at: [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
 - Required scopes: `repo` (full repository access)
+- 🔒 **Security:** Token is used **in-browser only** for GitHub API calls
+  - Not stored in localStorage, sessionStorage, or cookies
+  - Cleared from password field after scan completes
+  - Only transmitted to `api.github.com` via HTTPS
+  - Never logged or sent to any third party
 
 > ⚠️ **Production Note:** For production deployments, replace with GitHub App OAuth flow for better security.
 

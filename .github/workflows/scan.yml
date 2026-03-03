@@ -117,8 +117,9 @@ jobs:
           # Create pages directory structure
           mkdir -p pages/latest
           
-          # Copy all site files to pages/ root (index.html, app.js, styles.css)
-          cp -r site/* pages/
+          # Copy all UI files to pages/ root (index.html, app.js, styles.css)
+          cp index.html app.js styles.css pages/
+          cp -r logos pages/
           
           # Copy generated report to latest/
           cp output/report.html pages/latest/report.html

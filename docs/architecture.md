@@ -149,6 +149,29 @@ Design system:
 
 ### Backend Layer (GitHub Actions)
 
+#### Workflow Architecture
+
+**Two complementary workflows:**
+
+1. **deploy-ui.yml** — UI Deployment
+   - **Trigger:** Push to main (when index.html, app.js, or styles.css change)
+   - **Purpose:** Deploy scanner interface independently
+   - **Benefit:** Cold start - UI available immediately after fork, no scan needed
+   - **Duration:** ~30 seconds
+
+2. **scan.yml** — Scan Execution + Report Deployment
+   - **Trigger:** workflow_dispatch (manual, via scanner UI)
+   - **Purpose:** Run security scan + deploy UI + reports
+   - **Duration:** 5-30 minutes (depends on profile)
+
+**Why two workflows?**
+- **Separation of concerns:** UI updates don't require running scans
+- **Faster iteration:** Fix UI bugs without 15-minute scan cycles
+- **Cold start solution:** Users can access scanner immediately after forking
+- **Independent deployments:** UI and reports update independently
+
+---
+
 #### .github/workflows/scan.yml
 
 **Trigger mechanism:**
@@ -189,9 +212,11 @@ permissions:
 **Concurrency control:**
 ```yaml
 concurrency:
-  group: shield-scan
-  cancel-in-progress: false  # Allow multiple concurrent scans
+  group: pages        # Shared group with deploy-ui.yml
+  cancel-in-progress: false  # Allow queueing
 ```
+
+> **Note:** Both workflows use `group: pages` to prevent simultaneous Pages deployments (GitHub limitation).
 
 ---
 
@@ -264,6 +289,60 @@ node render/html_from_json.js \
   output/report.html \
   render/template.html
 ```
+
+---
+
+### Two HTML Pages Architecture
+
+**Critical distinction:** SHIELD Scanner uses two separate HTML pages with different purposes:
+
+#### 1. index.html — Interactive Scanner Dashboard
+
+**Location:** Repository root  
+**Purpose:** Primary user interface for submitting and monitoring scans  
+**Technology:** Vanilla JavaScript SPA with JSON-driven rendering  
+
+**Features:**
+- GitHub connection configuration (repo, token, workflow)
+- Scan parameter controls (target, mode, profile)
+- Authorization file upload
+- Real-time console output and status monitoring
+- Live report summary rendering from `latest/report.json`
+- Severity breakdown cards (Critical/High/Medium/Low/Info)
+- Top 25 findings table
+- Download links for JSON/MD reports
+
+**Data source:** Fetches `latest/report.json` and renders interactively
+
+---
+
+#### 2. report.html — Standalone Report Page
+
+**Location:** Generated at `pages/latest/report.html`  
+**Purpose:** Shareable, standalone security report (no dependencies)  
+**Technology:** Static HTML with inline CSS (fully self-contained)  
+
+**Generation:**
+```
+report.json → html_from_json.js → report.html
+```
+
+**Features:**
+- Grade, score, mode, and timing summary cards
+- Findings aggregated by step and severity  
+- Top 20 Critical/High findings table with evidence
+- No external dependencies (CSS inlined)
+- Printable and shareable via direct link
+
+**Data source:** Server-side rendered from `report.json` during workflow execution
+
+---
+
+**Why two pages?**
+- **index.html:** Interactive dashboard for running scans and viewing live results
+- **report.html:** Standalone artifact for sharing, archiving, or compliance documentation
+- **Different audiences:** index.html for operators, report.html for stakeholders/auditors
+- **Different lifecycles:** index.html is static, report.html is generated per scan
 
 ---
 
