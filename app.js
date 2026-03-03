@@ -307,7 +307,7 @@ async function startScan() {
   try {
     const repoFull = $("repo").value.trim();
     const token = $("token").value.trim();
-    const workflowFile = ($("workflow").value || "scan.yml").trim();
+    const workflowFile = "scan.yml";
     const targetUrl = $("targetUrl").value.trim();
     const mode = $("mode").value;
     const profile = $("profile").value;
@@ -430,13 +430,16 @@ function resetUi() {
 
 function wireEvents() {
   // Auto-detect repository from GitHub Pages URL
-  const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
-  const match = window.location.href.match(pagesPattern);
-  
   const repoField = $("repo");
-  if (match && repoField) {
-    const [, owner, repo] = match;
-    repoField.value = `${owner}/${repo}`;
+  if (repoField && !repoField.value) {
+    const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
+    const match = window.location.href.match(pagesPattern);
+    
+    if (match) {
+      const [, owner, repo] = match;
+      repoField.value = `${owner}/${repo}`;
+      logLine(`Auto-detected repository: ${owner}/${repo}`);
+    }
   }
 
   $("startBtn")?.addEventListener("click", startScan);

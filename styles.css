@@ -109,6 +109,21 @@ input::placeholder{ color: #6b7280; }
   padding: 8px;
 }
 
+.file::file-selector-button{
+  background: #6b7280;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin-right: 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.file::file-selector-button:hover{
+  background: #7d8794;
+}
+
 .two-col{
   display:grid;
   grid-template-columns: 1fr 1fr;
