@@ -317,7 +317,7 @@ async function startScan() {
     const profile = $("profile").value;
     const authFile = $("authFile").files?.[0] || null;
 
-    ensure(repoFull.length > 0 && repoFull !== "—", "Repository not detected. This page must be accessed from GitHub Pages (https://owner.github.io/repo).");
+    ensure(repoFull.length > 0, "Repository name is missing.");
     ensure(repoFull.includes("/"), "Repository format invalid. Expected 'owner/name'.");
     ensure(token.length > 0, "GitHub token is required (MVP).");
     ensure(targetUrl.length > 0, "Target URL is required.");
@@ -429,16 +429,26 @@ function resetUi() {
 }
 
 function wireEvents() {
-  // Auto-detect repository from GitHub Pages URL
+  // Note: Repository is hardcoded in HTML as "Georges034302/SHIELD-scanner"
+  // Auto-detection kept for potential future multi-repo support
   const repoDisplay = $("repoDisplay");
-  if (repoDisplay && repoDisplay.textContent === "—") {
-    const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
-    const match = window.location.href.match(pagesPattern);
-    
-    if (match) {
-      const [, owner, repo] = match;
-      repoDisplay.textContent = `${owner}/${repo}`;
-      logLine(`Auto-detected repository: ${owner}/${repo}`);
+  if (repoDisplay) {
+    const currentText = repoDisplay.textContent.trim();
+    // Only try to detect if somehow the display is empty or shows placeholder
+    if (!currentText || currentText === "—" || currentText === "-") {
+      const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
+      const match = window.location.href.match(pagesPattern);
+      
+      if (match) {
+        const [, owner, repo] = match;
+        repoDisplay.textContent = `${owner}/${repo}`;
+        logLine(`Auto-detected repository: ${owner}/${repo}`);
+      } else {
+        logLine(`⚠️  Repository not auto-detected. Using default: Georges034302/SHIELD-scanner`);
+        repoDisplay.textContent = "Georges034302/SHIELD-scanner";
+      }
+    } else {
+      logLine(`Using repository: ${currentText}`);
     }
   }
 

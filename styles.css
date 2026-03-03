@@ -213,6 +213,11 @@ input::placeholder{ color: #6b7280; }
 .v{ color: var(--text); word-break: break-word; }
 .v a{ color: var(--link); text-decoration:none; }
 
+#repoDisplay{
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* ===== Console ===== */
 .log{
   margin: 10px 0 0 0;
