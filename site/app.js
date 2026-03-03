@@ -387,6 +387,10 @@ async function startScan() {
     setStatus("Refreshing summary...");
     await loadLatestReport();
     setStatus("Done.");
+    
+    // Clear token from DOM for security
+    const tokenField = $("token");
+    if (tokenField) tokenField.value = "";
 
   } catch (e) {
     setStatus(`Error: ${e.message}`);
@@ -403,6 +407,10 @@ function resetUi() {
   $("runLink").textContent = "—";
   $("artifactsLink").textContent = "—";
   $("log").textContent = "Waiting…";
+  
+  // Clear token field for security
+  const tokenField = $("token");
+  if (tokenField) tokenField.value = "";
 
   // Summary reset
   safeText($("sumGrade"), "—");

@@ -1,0 +1,55 @@
+# Copyright © 2026 Georges Bou Ghantous. All Rights Reserved.
+# SHIELD® — Structured Website Security & Resilience Assessment Framework
+# This file is part of SHIELD Scanner and is subject to the terms of the
+# All Rights Reserved license included in the LICENSE file.
+
+name: Deploy UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-ui.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Pages content
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pages/latest
+          
+          # Copy UI files to pages root
+          cp -r site/* pages/
+          
+          # Create placeholder for latest report if not exists
+          if [ ! -f pages/latest/report.json ]; then
+            echo '{"meta":{"mode":"none","grade":"N/A"},"findings":[]}' > pages/latest/report.json
+          fi
+          
+          echo "Pages structure:"
+          ls -laR pages
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

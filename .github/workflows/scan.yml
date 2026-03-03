@@ -40,7 +40,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: shield-scan
+  group: pages
   cancel-in-progress: false
 
 run-name: "SHIELD Scan — ${{ inputs.auth_branch }}"
