@@ -1,6 +1,6 @@
 <h1>
-  <img src="logos/shield.png" alt="SHIELD Logo" width="80" align="middle"/> 
-  <span style="vertical-align: middle; display: inline-block;">SHIELD® Scanner</span>
+  <a href="https://georges034302.github.io/SHIELD-scanner/"><img src="logos/shield.png" alt="SHIELD Logo" width="80" align="middle"/></a>
+  <a href="https://georges034302.github.io/SHIELD-scanner/" style="vertical-align: middle; display: inline-block; text-decoration: none; color: inherit;">SHIELD® Scanner</a>
 </h1>
 
 ### GitHub Pages web interface for SHIELD Framework security assessments
