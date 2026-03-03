@@ -122,6 +122,18 @@ input::placeholder{ color: #6b7280; }
   line-height: 1.35;
 }
 
+.note.warning{
+  background: rgba(245, 200, 66, 0.12);
+  border: 1px solid rgba(245, 200, 66, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+  color: #f5c842;
+}
+
+.note.warning strong{
+  color: #ffd966;
+}
+
 .status{
   margin: 12px 0 0 0;
   font-size: 12px;
