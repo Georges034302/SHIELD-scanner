@@ -66,7 +66,7 @@ echo "Consolidating outputs..."
 jq -s '
 {
   meta: {
-    timestamp: (.[0].timestamp // now | todate),
+    timestamp: ((.[0].timestamp // now) | todate),
     target: (.[0].scope.target // "unknown"),
     mode: (.[0].scope.mode // "posture"),
     grade: "Pending"
