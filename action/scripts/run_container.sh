@@ -26,8 +26,16 @@ if [[ -n "${GHCR_USERNAME:-}" && -n "${GHCR_TOKEN:-}" ]]; then
   echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
 fi
 
-# Build args
-ARGS=( "${TARGET_URL}" "--mode" "${MODE}" "--profile" "${PROFILE}" )
+# Build args for SHIELD Framework CLI
+ARGS=()
+ARGS+=( "--mode" "${MODE}" )
+
+# Map profile to rate-aware mode if needed
+if [[ "${PROFILE}" == "quick" ]]; then
+  ARGS+=( "-t" "5" )
+elif [[ "${PROFILE}" == "deep" ]]; then
+  ARGS+=( "--rate-aware" )
+fi
 
 if [[ "${MODE}" == "authorized" ]]; then
   if [[ -z "${AUTH_FILE_PATH}" ]]; then
@@ -37,10 +45,33 @@ if [[ "${MODE}" == "authorized" ]]; then
   ARGS+=( "--i-accept-risk" "--authorization-ref" "/work/${AUTH_FILE_PATH}" )
 fi
 
+# Add target URL as last argument
+ARGS+=( "${TARGET_URL}" )
+
 echo "Running container..."
-# Assumption: image contains run_all.sh at /usr/bin/run_all.sh and writes output into /work/output
-docker run --rm   -v "${GITHUB_WORKSPACE:-$(pwd)}:/work"   -w /work   "${IMAGE}"   bash -lc "/usr/bin/run_all.sh ${ARGS[*]}"
+docker run --rm \
+  -v "${GITHUB_WORKSPACE:-$(pwd)}:/work" \
+  -v "${GITHUB_WORKSPACE:-$(pwd)}/output:/app/output" \
+  -w /work \
+  "${IMAGE}" \
+  "${ARGS[@]}"
 
 echo "Container finished."
-echo "Expected outputs:"
-ls -la output || true
+echo ""
+echo "Verifying outputs..."
+
+# Verify expected outputs exist
+if [[ ! -f "output/report.json" ]]; then
+  echo "ERROR: output/report.json not found"
+  exit 1
+fi
+
+if [[ ! -f "output/report.md" ]]; then
+  echo "ERROR: output/report.md not found"
+  exit 1
+fi
+
+echo "✓ output/report.json ($(wc -l < output/report.json) lines)"
+echo "✓ output/report.md ($(wc -l < output/report.md) lines)"
+echo ""
+echo "Scan completed successfully!"
