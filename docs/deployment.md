@@ -91,19 +91,9 @@ Most users should **fork** for easier updates.
 
 ---
 
-### Repository Secrets (Optional)
+### Repository Secrets
 
-Only needed if using a **private SHIELD Framework container image**.
-
-**Settings → Secrets and variables → Actions:**
-
-| Secret | Value | Purpose |
-|--------|-------|---------|
-| `GHCR_IMAGE` | `ghcr.io/yourorg/shield-framework:latest` | Custom container image |
-| `GHCR_USERNAME` | `your-username` | Container registry auth |
-| `GHCR_TOKEN` | `ghp_...` | Container registry token |
-
-**Default:** Uses public `ghcr.io/georges034302/shield-framework:latest` (no secrets needed)
+**None required.** The scanner clones the SHIELD Framework directly from GitHub at runtime.
 
 ---
 
@@ -144,10 +134,10 @@ Settings → Actions → General → Workflow permissions → Select "Read and w
 
 There's no complex deployment because there's no infrastructure. It's just:
 - Static HTML/CSS/JS on GitHub Pages
-- GitHub Actions runs the SHIELD Framework container
+- GitHub Actions clones and runs SHIELD Framework directly
 - Reports published back to Pages
 
-**No servers. No databases. No DevOps.**
+**No servers. No databases. No Docker. No DevOps.**
 
 ---
 

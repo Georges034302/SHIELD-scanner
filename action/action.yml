@@ -4,7 +4,7 @@
 # All Rights Reserved license included in the LICENSE file.
 
 name: "SHIELD Scanner"
-description: "Run SHIELD Framework container and generate report.html from report.json"
+description: "Clone and run SHIELD Framework, generate report.html from report.json"
 inputs:
   target_url:
     description: "Target URL (https://example.com)"
@@ -20,18 +20,19 @@ inputs:
   auth_file_path:
     description: "Path to authorization file in workspace (required for authorized)"
     required: false
-  image:
-    description: "SHIELD Framework container image"
-    required: false
-    default: "ghcr.io/georges034302/shield-framework:latest"
 
 runs:
   using: "composite"
   steps:
-    - name: Run SHIELD container
+    - name: Install dependencies
       shell: bash
       run: |
-        bash action/scripts/run_container.sh "${{ inputs.image }}" "${{ inputs.target_url }}" "${{ inputs.mode }}" "${{ inputs.profile }}" "${{ inputs.auth_file_path }}"
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq jq dnsutils netcat-openbsd
+    - name: Run SHIELD Framework
+      shell: bash
+      run: |
+        bash action/scripts/run_container.sh "${{ inputs.target_url }}" "${{ inputs.mode }}" "${{ inputs.profile }}" "${{ inputs.auth_file_path }}"
     - name: Render HTML from JSON
       shell: bash
       run: |

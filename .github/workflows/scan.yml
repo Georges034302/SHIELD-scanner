@@ -90,16 +90,12 @@ jobs:
           node-version: "20"
 
       - name: Run SHIELD + render HTML
-        env:
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         uses: ./action
         with:
           target_url: ${{ inputs.target_url }}
           mode: ${{ inputs.mode }}
           profile: ${{ inputs.profile }}
           auth_file_path: ${{ inputs.mode == 'authorized' && format('auth_branch/{0}', inputs.auth_path) || '' }}
-          image: ${{ secrets.GHCR_IMAGE || 'ghcr.io/georges034302/shield-framework:latest' }}
 
       - name: Upload artifacts (MD/JSON/HTML)
         uses: actions/upload-artifact@v4

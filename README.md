@@ -57,7 +57,7 @@ Submit scan:
   - Dispatches workflow via GitHub API
   ↓
 GitHub Actions workflow:
-  - Pulls SHIELD Framework container
+  - Clones SHIELD Framework repository
   - Executes 69 security checks
   - Generates reports (JSON/MD/HTML)
   - Deploys UI + reports to Pages
@@ -71,23 +71,15 @@ Results:
 **Architecture:**
 - **Frontend:** Vanilla HTML/CSS/JS dashboard (index.html, app.js, styles.css)
 - **Reports:** JSON-driven UI + standalone HTML report (render/html_from_json.js)
-- **Backend:** GitHub Actions + SHIELD Framework container
+- **Backend:** GitHub Actions + SHIELD Framework (cloned at runtime)
 - **Storage:** GitHub Pages (UI + reports) + Artifacts (90 days)
 - **Auth:** GitHub PAT in-browser (MVP, cleared after use)
 
 ---
 
-## Configuration (Optional)
+## Configuration
 
-**Default:** Uses public `ghcr.io/georges034302/shield-framework:latest` (no setup needed)
-
-**Custom SHIELD image:** Add repository secrets:
-
-| Secret | Value |
-|--------|-------|
-| `GHCR_IMAGE` | `ghcr.io/your-org/shield-framework:latest` |
-| `GHCR_USERNAME` | `your-username` |
-| `GHCR_TOKEN` | `ghp_...` |
+**Default:** Clones the latest SHIELD Framework from GitHub at runtime (no setup needed)
 
 ---
 

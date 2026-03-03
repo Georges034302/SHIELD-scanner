@@ -45,7 +45,7 @@ This document provides a technical deep dive into SHIELD Scanner's architecture,
 │  │  Git Repository          │  │  GitHub Actions          │ │
 │  │  • main branch           │  │  • scan.yml workflow     │ │
 │  │  • auth/<runId> branches │  │  • Ubuntu runners        │ │
-│  │  • Authorization files   │  │  • Docker engine         │ │
+│  │  • Authorization files   │  │  • Native execution      │ │
 │  └──────────┬───────────────┘  └──────────┬───────────────┘ │
 │             │                             │                 │
 │             │  ┌────────────────────────┐ │                 │
@@ -65,8 +65,8 @@ This document provides a technical deep dive into SHIELD Scanner's architecture,
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│            SHIELD Framework Container                       │
-│            (ghcr.io/georges034302/shield-framework)         │
+│            SHIELD Framework (Cloned at Runtime)             │
+│            (https://github.com/Georges034302/SHIELD-framework) │
 │  • 69 security checks across 6 steps                        │
 │  • Multi-format report generation                           │
 │  • WordPress authentication support                         │
