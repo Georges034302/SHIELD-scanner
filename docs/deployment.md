@@ -103,7 +103,7 @@ Only needed if using a **private SHIELD Framework container image**.
 | `GHCR_USERNAME` | `your-username` | Container registry auth |
 | `GHCR_TOKEN` | `ghp_...` | Container registry token |
 
-**Default:** Uses public `ghcr.io/Georges034302/SHIELD-framework:latest` (no secrets needed)
+**Default:** Uses public `ghcr.io/georges034302/shield-framework:latest` (no secrets needed)
 
 ---
 

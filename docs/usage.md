@@ -253,7 +253,7 @@ docker run --rm \
 
 ### Container Image
 
-Default: `ghcr.io/Georges034302/SHIELD-framework:latest`
+Default: `ghcr.io/georges034302/shield-framework:latest`
 
 **Custom image:** Set repository secret `GHCR_IMAGE`
 ```
@@ -340,7 +340,7 @@ GHCR_TOKEN=<your-token>
 
 ### Container Pull Failures
 ```
-Error: Failed to pull image ghcr.io/Georges034302/SHIELD-framework:latest
+Error: Failed to pull image ghcr.io/georges034302/shield-framework:latest
 ```
 
 **Solution:** Set `GHCR_USERNAME` and `GHCR_TOKEN` repository secrets for private images.

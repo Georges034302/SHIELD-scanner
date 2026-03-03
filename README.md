@@ -79,7 +79,7 @@ Results:
 
 ## Configuration (Optional)
 
-**Default:** Uses public `ghcr.io/Georges034302/SHIELD-framework:latest` (no setup needed)
+**Default:** Uses public `ghcr.io/georges034302/shield-framework:latest` (no setup needed)
 
 **Custom SHIELD image:** Add repository secrets:
 

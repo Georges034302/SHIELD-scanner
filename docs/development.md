@@ -299,13 +299,13 @@ xdg-open output/report.html  # Linux
 
 ```bash
 # Pull SHIELD Framework image
-docker pull ghcr.io/Georges034302/SHIELD-framework:latest
+docker pull ghcr.io/georges034302/shield-framework:latest
 
 # Run scan locally (posture mode)
 docker run --rm \
   -v "$(pwd):/work" \
   -w /work \
-  ghcr.io/Georges034302/SHIELD-framework:latest \
+  ghcr.io/georges034302/shield-framework:latest \
   bash -lc "/usr/bin/run_all.sh https://example.com --mode posture --profile quick"
 
 # Check outputs

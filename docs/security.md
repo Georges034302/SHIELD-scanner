@@ -239,19 +239,19 @@ inputs:
 **Pin to digest:**
 ```yaml
 # Instead of:
-image: ghcr.io/Georges034302/SHIELD-framework:latest
+image: ghcr.io/georges034302/shield-framework:latest
 
 # Use:
-image: ghcr.io/Georges034302/SHIELD-framework@sha256:abc123...
+image: ghcr.io/georges034302/shield-framework@sha256:abc123...
 ```
 
 **Verify signature (future):**
 ```bash
 # Sign images with cosign
-cosign sign ghcr.io/Georges034302/SHIELD-framework:v2.0
+cosign sign ghcr.io/georges034302/shield-framework:v2.0
 
 # Verify before use
-cosign verify --key cosign.pub ghcr.io/Georges034302/SHIELD-framework:v2.0
+cosign verify --key cosign.pub ghcr.io/georges034302/shield-framework:v2.0
 ```
 
 ---

@@ -66,7 +66,7 @@ This document provides a technical deep dive into SHIELD Scanner's architecture,
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │            SHIELD Framework Container                       │
-│            (ghcr.io/Georges034302/SHIELD-framework)         │
+│            (ghcr.io/georges034302/shield-framework)         │
 │  • 69 security checks across 6 steps                        │
 │  • Multi-format report generation                           │
 │  • WordPress authentication support                         │

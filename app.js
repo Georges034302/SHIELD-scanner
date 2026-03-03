@@ -305,16 +305,20 @@ async function startScan() {
   setStatus("Validating input...");
 
   try {
-    const repoFull = $("repo").value.trim();
+    const repoFull = $("repoDisplay").textContent.trim();
     const token = $("token").value.trim();
+    
+    // Clear token immediately from DOM for security
+    const tokenField = $("token");
+    if (tokenField) tokenField.value = "";
     const workflowFile = "scan.yml";
     const targetUrl = $("targetUrl").value.trim();
     const mode = $("mode").value;
     const profile = $("profile").value;
     const authFile = $("authFile").files?.[0] || null;
 
-    ensure(repoFull.length > 0, "Repository field is empty. Enter your repository in the form 'owner/name'.");
-    ensure(repoFull.includes("/"), "Repository must be in the form 'owner/name' (e.g., 'Georges034302/SHIELD-scanner').");
+    ensure(repoFull.length > 0 && repoFull !== "—", "Repository not detected. This page must be accessed from GitHub Pages (https://owner.github.io/repo).");
+    ensure(repoFull.includes("/"), "Repository format invalid. Expected 'owner/name'.");
     ensure(token.length > 0, "GitHub token is required (MVP).");
     ensure(targetUrl.length > 0, "Target URL is required.");
     if (mode === "authorized") ensure(authFile, "Authorization file is required for authorized mode.");
@@ -388,10 +392,6 @@ async function startScan() {
     setStatus("Refreshing summary...");
     await loadLatestReport();
     setStatus("Done.");
-    
-    // Clear token from DOM for security
-    const tokenField = $("token");
-    if (tokenField) tokenField.value = "";
 
   } catch (e) {
     setStatus(`Error: ${e.message}`);
@@ -430,14 +430,14 @@ function resetUi() {
 
 function wireEvents() {
   // Auto-detect repository from GitHub Pages URL
-  const repoField = $("repo");
-  if (repoField && !repoField.value) {
+  const repoDisplay = $("repoDisplay");
+  if (repoDisplay && repoDisplay.textContent === "—") {
     const pagesPattern = /^https?:\/\/([^.]+)\.github\.io\/([^/]+)/;
     const match = window.location.href.match(pagesPattern);
     
     if (match) {
       const [, owner, repo] = match;
-      repoField.value = `${owner}/${repo}`;
+      repoDisplay.textContent = `${owner}/${repo}`;
       logLine(`Auto-detected repository: ${owner}/${repo}`);
     }
   }

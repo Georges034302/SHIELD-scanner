@@ -99,7 +99,7 @@ jobs:
           mode: ${{ inputs.mode }}
           profile: ${{ inputs.profile }}
           auth_file_path: ${{ inputs.mode == 'authorized' && format('auth_branch/{0}', inputs.auth_path) || '' }}
-          image: ${{ secrets.GHCR_IMAGE || 'ghcr.io/Georges034302/SHIELD-framework:latest' }}
+          image: ${{ secrets.GHCR_IMAGE || 'ghcr.io/georges034302/shield-framework:latest' }}
 
       - name: Upload artifacts (MD/JSON/HTML)
         uses: actions/upload-artifact@v4

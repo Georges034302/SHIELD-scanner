@@ -23,7 +23,7 @@ inputs:
   image:
     description: "SHIELD Framework container image"
     required: false
-    default: "ghcr.io/Georges034302/SHIELD-framework:latest"
+    default: "ghcr.io/georges034302/shield-framework:latest"
 
 runs:
   using: "composite"
