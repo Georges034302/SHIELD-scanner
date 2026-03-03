@@ -11,7 +11,7 @@
 
 ## What Is This?
 
-**SHIELD Scanner** is just a web UI (HTML/CSS/JS) that triggers [SHIELD Framework](https://github.com/Georges034302/SHIELD-framework) container scans via GitHub Actions.
+**SHIELD Scanner** is just a web UI that triggers [SHIELD Framework](https://github.com/Georges034302/SHIELD-framework) container scans via GitHub Actions.
 
 **That's it. Simple as:**
 1. Open web page → Configure scan → Upload authorization (if needed)

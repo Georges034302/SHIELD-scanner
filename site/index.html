@@ -7,106 +7,210 @@
 -->
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>SHIELD Scanner</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <header class="wrap">
-    <h1>SHIELD Scanner</h1>
-    <p class="muted">
-      Upload a written authorization file → trigger a GitHub Actions scan → publish accurate HTML summary (from JSON).
-    </p>
-  </header>
+  <div class="main-container">
 
-  <main class="wrap grid">
-    <section class="card">
-      <h2>1) Connect to GitHub</h2>
-      <label>
-        Repository (owner/name)
-        <input id="repo" placeholder="Georges034302/SHIELD-scanner" />
-      </label>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">SHIELD Scanner</div>
+          <div class="brand-sub">GitHub Actions–powered execution + JSON-driven UI</div>
+        </div>
+      </div>
 
-      <label>
-        GitHub Token (MVP)
+      <!-- GitHub Connection -->
+      <section class="card">
+        <h2>GitHub Connection</h2>
+
+        <label for="repo">Repository (owner/name)</label>
+        <input id="repo" type="text" placeholder="Georges034302/SHIELD-scanner" />
+
+        <label for="workflow">Workflow file</label>
+        <input id="workflow" type="text" value="scan.yml" />
+
+        <label for="token">GitHub Token (MVP)</label>
         <input id="token" type="password" placeholder="ghp_..." />
-        <div class="hint">Needs <code>repo</code> scope (MVP). In production, use a GitHub App OAuth flow.</div>
-      </label>
 
-      <label>
-        Workflow file name
-        <input id="workflow" value="scan.yml" />
-      </label>
-    </section>
+        <div class="note">
+          Token is used in-browser to upload auth + dispatch workflow.
+          Prefer a GitHub App later.
+        </div>
+      </section>
 
-    <section class="card">
-      <h2>2) Configure Scan</h2>
-      <label>
-        Target URL
-        <input id="targetUrl" placeholder="https://example.com" />
-      </label>
+      <!-- Scan Config -->
+      <section class="card">
+        <h2>Scan Configuration</h2>
 
-      <label>
-        Mode
-        <select id="mode">
-          <option value="posture" selected>posture (default, safe)</option>
-          <option value="authorized">authorized (requires written authorization + risk flag)</option>
-        </select>
-      </label>
+        <label for="targetUrl">Target URL</label>
+        <input id="targetUrl" type="url" placeholder="https://example.com" />
 
-      <label>
-        Profile
-        <select id="profile">
-          <option value="standard" selected>standard</option>
-          <option value="quick">quick</option>
-          <option value="deep">deep</option>
-        </select>
-        <div class="hint">Profiles map to framework args (you can adjust in workflow/action).</div>
-      </label>
+        <div class="two-col">
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="posture" selected>posture (safe)</option>
+              <option value="authorized">authorized (requires auth)</option>
+            </select>
+          </div>
 
-      <label class="file">
-        Written Authorization File (required for <b>authorized</b>)
-        <input id="authFile" type="file" accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg" />
-      </label>
+          <div>
+            <label for="profile">Profile</label>
+            <select id="profile">
+              <option value="quick">quick</option>
+              <option value="standard" selected>standard</option>
+              <option value="deep">deep</option>
+            </select>
+          </div>
+        </div>
 
-      <div class="row">
-        <button id="startBtn">Submit Authorization & Start Scan</button>
-        <button id="resetBtn" class="secondary">Reset</button>
+        <label for="authFile">Written Authorization File</label>
+        <input id="authFile" type="file" class="file" accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg" />
+
+        <div class="buttons-row">
+          <button id="startBtn" class="btn primary">Submit & Start</button>
+          <button id="resetBtn" class="btn">Reset</button>
+        </div>
+
+        <p id="status" class="status">Status: Idle</p>
+      </section>
+
+      <!-- Run Links -->
+      <section class="card">
+        <h2>Run</h2>
+        <div class="kv">
+          <div class="k">Run ID</div><div class="v" id="runId">—</div>
+          <div class="k">Auth Branch</div><div class="v" id="authBranch">—</div>
+          <div class="k">Workflow</div><div class="v" id="runLink">—</div>
+          <div class="k">Artifacts</div><div class="v" id="artifactsLink">—</div>
+        </div>
+
+        <div class="buttons-row">
+          <a id="openLatestJson" class="btn link" href="latest/report.json" target="_blank" rel="noreferrer">Open JSON</a>
+          <a id="openLatestMd" class="btn link" href="latest/report.md" target="_blank" rel="noreferrer">Open MD</a>
+        </div>
+
+        <div class="note">
+          The UI renders summary from <code>latest/report.json</code>. Markdown is for download only.
+        </div>
+      </section>
+
+      <!-- Console -->
+      <section class="card">
+        <h2>Console</h2>
+        <pre id="log" class="log">Waiting…</pre>
+      </section>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+
+      <!-- Header -->
+      <div class="content-head">
+        <div>
+          <h1>Report Summary</h1>
+          <p class="muted">
+            Rendered from <b>report.json</b> (truth). No Markdown parsing.
+          </p>
+        </div>
+
+        <div class="download-row">
+          <a class="btn primary" id="downloadMd" href="latest/report.md" download>Download report.md</a>
+          <a class="btn" id="downloadJson" href="latest/report.json" download>Download report.json</a>
+        </div>
       </div>
 
-      <div id="status" class="status muted">Idle.</div>
-    </section>
-
-    <section class="card">
-      <h2>3) Progress & Results</h2>
-
-      <div class="kv">
-        <div class="k">Run ID</div><div class="v" id="runId">—</div>
-        <div class="k">Auth Branch</div><div class="v" id="authBranch">—</div>
-        <div class="k">Workflow Run</div><div class="v" id="runLink">—</div>
-        <div class="k">Artifacts</div><div class="v" id="artifactsLink">—</div>
-        <div class="k">HTML (Pages)</div><div class="v" id="pagesLink">—</div>
+      <!-- Summary cards -->
+      <div class="cards">
+        <div class="summary-card">
+          <div class="k">Grade</div>
+          <div class="v" id="sumGrade">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="k">Mode</div>
+          <div class="v" id="sumMode">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="k">Findings</div>
+          <div class="v" id="sumFindings">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="k">Last Updated</div>
+          <div class="v small" id="sumUpdated">—</div>
+        </div>
       </div>
 
-      <div class="hint">
-        Live streaming from a static site is not possible without a backend.
-        This MVP uses polling for workflow status, and links to logs. The framework can print per-check events into logs.
-      </div>
+      <!-- Severity breakdown -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Severity Breakdown</h2>
+          <button id="refreshBtn" class="btn">Refresh from latest/report.json</button>
+        </div>
+        <div class="sev-grid">
+          <div class="sev-card crit">
+            <div class="k">CRITICAL</div>
+            <div class="v" id="sevCritical">0</div>
+          </div>
+          <div class="sev-card high">
+            <div class="k">HIGH</div>
+            <div class="v" id="sevHigh">0</div>
+          </div>
+          <div class="sev-card med">
+            <div class="k">MEDIUM</div>
+            <div class="v" id="sevMedium">0</div>
+          </div>
+          <div class="sev-card low">
+            <div class="k">LOW</div>
+            <div class="v" id="sevLow">0</div>
+          </div>
+          <div class="sev-card info">
+            <div class="k">INFO</div>
+            <div class="v" id="sevInfo">0</div>
+          </div>
+        </div>
+      </section>
 
-      <pre id="log" class="log">Waiting…</pre>
-    </section>
-  </main>
+      <!-- Top findings -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Top Findings</h2>
+          <div class="muted small">Critical/High first (from JSON).</div>
+        </div>
 
-  <footer class="wrap muted">
-    <small>
-      Rule: JSON is truth, MD is full narrative, HTML is curated summary from JSON only.
-    </small>
-    <small style="display:block;margin-top:8px">
-      Copyright © 2026 Georges Bou Ghantous. All Rights Reserved. SHIELD® — Structured Website Security & Resilience Assessment Framework
-    </small>
-  </footer>
+        <div class="table-wrap">
+          <table class="table" id="findingsTable">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Check</th>
+                <th>Result</th>
+                <th>Confidence</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody id="findingsTbody">
+              <tr><td colspan="5" class="muted">No data loaded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-  <script src="./app.js"></script>
+      <footer class="footer">
+        <span>JSON = truth · MD = full narrative evidence · UI = rendered from JSON only</span>
+        <br>
+        <small>Copyright © 2026 Georges Bou Ghantous. All Rights Reserved. SHIELD® — Structured Website Security & Resilience Assessment Framework</small>
+      </footer>
+
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
