@@ -221,6 +221,8 @@ See [docs/security.md](docs/security.md) for security best practices.
 | Document | Purpose |
 |----------|---------|
 | [docs/usage.md](docs/usage.md) | How to use the web interface |
+| [docs/FEATURES.md](docs/FEATURES.md) | Complete feature list and implementation notes |
+| [docs/TESTING.md](docs/TESTING.md) | Comprehensive testing guide (29 test cases) |
 | [docs/deployment.md](docs/deployment.md) | Fork, enable Pages, and optional configurations |
 | [docs/architecture.md](docs/architecture.md) | Technical details (how it works) |
 | [docs/security.md](docs/security.md) | Security best practices |
