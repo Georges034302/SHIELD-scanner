@@ -485,22 +485,33 @@ async function startScan() {
 }
 
 function resetUi() {
-  setStatus("Idle");
-  safeText($("runId"), "—");
-  safeText($("authBranch"), "—");
-  $("runLink").textContent = "—";
-  $("artifactsLink").textContent = "—";
-  $("log").textContent = "Waiting…";
-  
-  // Clear input fields
+  // Clear input fields only
   const tokenField = $("token");
   if (tokenField) tokenField.value = "";
   const targetUrlField = $("targetUrl");
   if (targetUrlField) targetUrlField.value = "";
   const authFileField = $("authFile");
   if (authFileField) authFileField.value = "";
+  
+  // Reset mode and profile to defaults
+  const modeField = $("mode");
+  if (modeField) modeField.value = "posture";
+  const profileField = $("profile");
+  if (profileField) profileField.value = "standard";
+  
+  logLine("Input fields cleared.");
+}
 
-  // Summary reset
+function clearReport() {
+  // Clear scan status and run info
+  setStatus("Idle");
+  safeText($("runId"), "—");
+  safeText($("authBranch"), "—");
+  $("runLink").textContent = "—";
+  $("artifactsLink").textContent = "—";
+  $("log").textContent = "Waiting…";
+
+  // Clear report summary
   safeText($("sumGrade"), "—");
   safeText($("sumMode"), "—");
   safeText($("sumFindings"), "—");
@@ -513,6 +524,8 @@ function resetUi() {
 
   const tbody = $("findingsTbody");
   if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted">No data loaded yet.</td></tr>`;
+  
+  logLine("Report summary cleared.");
 }
 
 async function refreshReport() {
@@ -567,6 +580,7 @@ function wireEvents() {
   $("startBtn")?.addEventListener("click", startScan);
   $("resetBtn")?.addEventListener("click", resetUi);
   $("refreshBtn")?.addEventListener("click", refreshReport);
+  $("clearReportBtn")?.addEventListener("click", clearReport);
 
   // Load whatever latest report exists at page open (with minimal retries)
   loadLatestReport(0, 2, 1000).catch(() => {
