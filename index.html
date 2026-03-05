@@ -35,8 +35,8 @@
           <div class="v" id="repoDisplay">Georges034302/SHIELD-scanner</div>
         </div>
 
-        <label for="token">GitHub Token (MVP)</label>
-        <input id="token" type="password" placeholder="ghp_..." />
+        <label for="token">GitHub Token (Required)</label>
+        <input id="token" type="password" placeholder="ghp_..." required />
 
         <div class="note">
           <strong>🔒 Security:</strong> Token is used in-browser only for GitHub API calls. We do NOT store, log, or transmit it anywhere except directly to api.github.com via HTTPS.
@@ -48,7 +48,7 @@
         <h2>Scan Configuration</h2>
 
         <label for="targetUrl">Target URL</label>
-        <input id="targetUrl" type="url" placeholder="https://example.com" />
+        <input id="targetUrl" type="url" placeholder="https://example.com" required />
 
         <div class="note warning">
           ⚠️ <strong>Legal Notice:</strong> Only scan websites you own or have explicit written authorization to test. Unauthorized security testing may be illegal in your jurisdiction.
@@ -73,8 +73,16 @@
           </div>
         </div>
 
-        <label for="authFile">Written Authorization File</label>
-        <input id="authFile" type="file" class="file" accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg" />
+        <label for="authFile">Written Authorization File (.txt only)</label>
+        <input id="authFile" type="file" class="file" accept=".txt" />
+        
+        <div class="note">
+          <strong>📄 Required format:</strong>
+          <pre style="margin: 4px 0; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; line-height: 1.4;">Site to scan: https://example.com
+Organization: Example Corp
+Authorizer: John Doe
+Admin login: admin@example.com</pre>
+        </div>
 
         <div class="buttons-row">
           <button id="startBtn" class="btn primary">Submit & Start</button>

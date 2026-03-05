@@ -314,6 +314,55 @@ async function loadLatestReport(retries = 0, maxRetries = 10, delayMs = 3000) {
   }
 }
 
+/** ---------------- Validation ---------------- */
+
+async function validateAuthFile(file) {
+  if (!file) {
+    throw new Error("Authorization file is required for authorized mode.");
+  }
+  
+  // Check file extension
+  if (!file.name.toLowerCase().endsWith('.txt')) {
+    throw new Error("Authorization file must be a .txt file.");
+  }
+  
+  // Read and validate file content
+  const content = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => reject(new Error("Failed to read authorization file."));
+    reader.readAsText(file);
+  });
+  
+  const contentLower = content.toLowerCase();
+  const requiredFields = [
+    { pattern: /site\s*(?:to\s*scan)?[:]\s*.+/i, name: "Site to scan" },
+    { pattern: /org(?:anization)?[:]\s*.+/i, name: "Organization" },
+    { pattern: /authoriz(?:er|or)[:]\s*.+/i, name: "Authorizer" },
+    { pattern: /admin\s*login[:]\s*.+/i, name: "Admin login" }
+  ];
+  
+  const missing = [];
+  for (const field of requiredFields) {
+    if (!field.pattern.test(content)) {
+      missing.push(field.name);
+    }
+  }
+  
+  if (missing.length > 0) {
+    throw new Error(
+      `Authorization file is missing required fields:\n${missing.map(f => `  • ${f}`).join('\n')}\n\n` +
+      `Example format:\n` +
+      `Site to scan: https://example.com\n` +
+      `Organization: Example Corp\n` +
+      `Authorizer: John Doe\n` +
+      `Admin login: admin@example.com (or N/A)`
+    );
+  }
+  
+  return content;
+}
+
 /** ---------------- Main flow ---------------- */
 
 async function startScan() {
@@ -326,24 +375,30 @@ async function startScan() {
     const token = $("token").value.trim();
     const targetUrl = $("targetUrl").value.trim();
     const authFile = $("authFile").files?.[0] || null;
+    const workflowFile = "scan.yml";
+    const mode = $("mode").value;
+    const profile = $("profile").value;
+
+    // Validate all inputs BEFORE clearing sensitive fields
+    ensure(repoFull.length > 0, "Repository name is missing.");
+    ensure(repoFull.includes("/"), "Repository format invalid. Expected 'owner/name'.");
+    ensure(token.length > 0, "⚠️ GitHub token is required. Please enter your token.");
+    ensure(targetUrl.length > 0, "⚠️ Target URL is required.");
     
-    // Clear sensitive fields immediately from DOM for security
+    // Validate authorization file for authorized mode
+    if (mode === "authorized") {
+      ensure(authFile, "⚠️ Authorization file is required for authorized mode.");
+      await validateAuthFile(authFile);
+      logLine("✓ Authorization file validated successfully.");
+    }
+    
+    // Clear sensitive fields from DOM for security (only after validation passes)
     const tokenField = $("token");
     if (tokenField) tokenField.value = "";
     const targetUrlField = $("targetUrl");
     if (targetUrlField) targetUrlField.value = "";
     const authFileField = $("authFile");
     if (authFileField) authFileField.value = "";
-    
-    const workflowFile = "scan.yml";
-    const mode = $("mode").value;
-    const profile = $("profile").value;
-
-    ensure(repoFull.length > 0, "Repository name is missing.");
-    ensure(repoFull.includes("/"), "Repository format invalid. Expected 'owner/name'.");
-    ensure(token.length > 0, "GitHub token is required (MVP).");
-    ensure(targetUrl.length > 0, "Target URL is required.");
-    if (mode === "authorized") ensure(authFile, "Authorization file is required for authorized mode.");
 
     const [owner, repo] = repoFull.split("/", 2);
 
