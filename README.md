@@ -88,21 +88,44 @@ Results:
 **1. Open your Pages URL**
 
 **2. Fill in the form:**
-- Repository: `your-username/SHIELD-scanner`
+
+**GitHub Connection Panel:**
+- Repository: Auto-detected as `Georges034302/SHIELD-scanner`
+
+**User GitHub Token Panel:**
 - GitHub Token: [Generate token](https://github.com/settings/tokens) with `repo` scope
   - 🔒 Token is used **in-browser only** (not stored, cleared after use)
   - Only transmitted to `api.github.com` via HTTPS
+  - **Required** — scan won't start without it
+
+**Scan Configuration Panel:**
 - Target URL: `https://example.com` (⚠️ only scan sites you own or have written authorization)
+  - **Required** — validated before scan starts
 - Mode: `posture` (safe) or `authorized` (active testing)
 - Profile: `quick`, `standard`, or `deep`
-- Authorization file: Upload PDF/TXT (required for authorized mode)
+- Authorization file: Upload `.txt` file (required for authorized mode)
+  - **Must be .txt format** with required fields:
+    - Site to scan: [URL]
+    - Organization: [Name]
+    - Authorizer: [Name]
+    - Admin login: [Email/Username or N/A]
+  - File content validated before scan starts
 
 **3. Submit** and watch live progress in console
 
 **4. Access reports:**
-- Dashboard: Auto-refreshes from `latest/report.json`
+- Dashboard: Auto-refreshes from `latest/report.json` with retry logic
+  - Up to 10 retries with exponential backoff
+  - Handles GitHub Pages deployment delays automatically
 - Standalone: `/latest/report.html` (shareable link)
-- Downloads: JSON/MD from GitHub Actions artifacts
+- Downloads: Click "Download report.md" or "Download report.json"
+  - Buttons are disabled (greyed out) until reports are generated
+  - Automatically enabled when scan completes
+
+**UI Controls:**
+- **Reset** button: Clears all input fields (token, URL, file selection)
+- **Clear Report** button: Clears displayed scan results and disables download buttons
+- **Refresh from latest/report.json** button: Manually refreshes dashboard from latest report
 
 See [docs/usage.md](docs/usage.md) for detailed instructions.
 

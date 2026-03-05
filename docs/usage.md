@@ -40,19 +40,22 @@ Once deployed to GitHub Pages:
 
 ### Step 1: Connect to GitHub
 
-**Repository Configuration:**
+The UI is split into two panels for clarity:
+
+**Panel 1: GitHub Connection**
 ```
 Repository: Georges034302/SHIELD-scanner
-Workflow file: scan.yml
 ```
+- Repository information is auto-detected from the GitHub Pages URL
+- Shows the repository where scans will be executed
 
-**GitHub Token (MVP):**
-- For MVP deployment, you need a Personal Access Token with `repo` scope
+**Panel 2: User GitHub Token**
+- **Required** — Scan will not start without a valid token
 - Generate at: [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
 - Required scopes: `repo` (full repository access)
 - 🔒 **Security:** Token is used **in-browser only** for GitHub API calls
   - Not stored in localStorage, sessionStorage, or cookies
-  - Cleared from password field after scan completes
+  - Cleared from password field immediately after scan dispatches
   - Only transmitted to `api.github.com` via HTTPS
   - Never logged or sent to any third party
 
@@ -66,7 +69,10 @@ Workflow file: scan.yml
 ```
 https://example.com
 ```
-The website you want to assess. Must be a fully qualified URL including protocol.
+- The website you want to assess
+- Must be a fully qualified URL including protocol
+- **Required** — Scan will not start without a valid URL
+- Validated before scan execution
 
 #### Mode Selection
 
@@ -74,13 +80,13 @@ The website you want to assess. Must be a fully qualified URL including protocol
 - Passive reconnaissance only
 - No active testing (brute force, authentication probing)
 - **Recommended** for continuous monitoring
-- No risk flag required
+- No authorization file required
 
 **Authorized Mode** — Active Testing
 - Enables brute force lockout testing
 - Active authentication probing
-- **Requires written authorization**
-- Must upload authorization document
+- **Requires written authorization file**
+- Must upload valid .txt authorization document
 
 #### Profile Selection
 
@@ -94,27 +100,57 @@ The website you want to assess. Must be a fully qualified URL including protocol
 
 ### Step 3: Upload Authorization (Required for Authorized Mode)
 
-**Accepted Formats:**
-- PDF (`.pdf`)
-- Text (`.txt`)
-- Word (`.doc`, `.docx`)
-- Images (`.png`, `.jpg`, `.jpeg`)
+**Important: File format changed to .txt only for security and validation purposes.**
 
-**Authorization Document Requirements:**
-1. Written permission from website owner
-2. Scope definition (target URL, IP address)
-3. Testing window (start/end dates)
-4. Contact information for website owner
-5. Your contact information
-6. Signatures (digital or scanned)
+**Accepted Format:**
+- Text files only (`.txt`)
 
-**Example Authorization Letter:**
+**Authorization File Requirements:**
+
+The .txt file must contain these **four required fields**:
+
+1. **Site to scan:** [Full URL]
+2. **Organization:** [Organization name]
+3. **Authorizer:** [Name of person granting authorization]
+4. **Admin login:** [Admin email/username or "N/A"]
+
+**Format Example:**
+
+```txt
+Site to scan: https://example.com
+Organization: Example Corporation
+Authorizer: John Doe
+Admin login: admin@example.com
 ```
+
+Or if no admin credentials:
+```txt
+Site to scan: https://example.com
+Organization: Example Corporation
+Authorizer: Jane Smith
+Admin login: N/A
+```
+
+**Field Validation:**
+- The UI validates all four fields are present before allowing scan to start
+- Field names are case-insensitive
+- Fields can be in any order
+- Missing fields will show error message with list of missing items
+
+**Additional Content (Optional):**
+
+You may include additional information in the file:
+
+```txt
+Site to scan: https://example.com
+Organization: Example Corporation
+Authorizer: John Doe (Security Manager)
+Admin login: admin@example.com
+
 SECURITY ASSESSMENT AUTHORIZATION
 
-I, [Website Owner Name], hereby authorize [Your Name/Organization] to perform
-security assessment activities on the website https://example.com (IP: 192.0.2.1)
-during the period of [Start Date] to [End Date].
+Written permission granted to perform security assessment activities
+during the period of January 1, 2026 to January 31, 2026.
 
 Authorized activities include:
 - Vulnerability scanning
@@ -122,30 +158,92 @@ Authorized activities include:
 - Security configuration review
 - Limited brute force testing (max 10 attempts)
 
-Point of Contact:
-[Website Owner Name]
-[Email]
-[Phone]
+Point of Contact: info@example.com
+Phone: (555) 123-4567
 
-Authorized Tester:
-[Your Name]
-[Email]
-[Phone]
-
-Signature: ________________    Date: __________
+Signature: [Digitally signed or acknowledged]
+Date: January 1, 2026
 ```
 
 ---
 
 ### Step 4: Start Scan
 
-Click **"Submit Authorization & Start Scan"** to:
+**Pre-flight Validation:**
 
-1. **Upload Authorization** — Commits file to ephemeral branch `auth/<runId>`
-2. **Dispatch Workflow** — Triggers GitHub Actions workflow `scan.yml`
-3. **Monitor Progress** — Polls workflow status every 6 seconds
-4. **Generate Reports** — Creates JSON, Markdown, and HTML outputs
-5. **Publish Results** — Deploys HTML summary to GitHub Pages
+Before the scan starts, the UI validates:
+- ✅ GitHub token is present (field not empty)
+- ✅ Target URL is present (field not empty)
+- ✅ For authorized mode: Authorization file is uploaded
+- ✅ For authorized mode: Authorization file is .txt format
+- ✅ For authorized mode: All four required fields are present in the file
+
+If validation fails, you'll see a detailed error message explaining what's missing.
+
+**Submit & Start Button:**
+
+Click **"Submit & Start"** to begin the scan:
+
+1. **Validation Phase** — Checks all inputs and auth file content
+2. **Upload Authorization** — Commits file to ephemeral branch `auth/<runId>` (if in authorized mode)
+3. **Dispatch Workflow** — Triggers GitHub Actions workflow `scan.yml` via API
+4. **Monitor Progress** — Polls workflow status every 6 seconds
+5. **Wait for Pages** — Waits for GitHub Pages to deploy reports (up to 10 retries with exponential backoff)
+6. **Auto-refresh** — Loads report data automatically and enables download buttons
+
+**During Scan:**
+- Console shows real-time status updates
+- Status line shows current operation
+- Run ID, auth branch, and workflow links are populated
+- Download buttons remain disabled (greyed out)
+
+**After Scan Completes:**
+- Status shows "✓ Done - Report loaded successfully"
+- Dashboard auto-refreshes with report data (grade, findings, severity breakdown)
+- Download buttons become enabled (blue, clickable)
+- Console confirms report loaded
+
+---
+
+## UI Controls Reference
+
+### Primary Buttons
+
+**Submit & Start**
+- Validates all inputs before starting
+- Clears sensitive data (token, URL, file selection) from DOM after validation
+- Disables during scan execution
+- Re-enables after scan completes
+
+**Reset**
+- Clears all input fields (token, target URL, file selection)
+- Resets mode to "posture" and profile to "standard"
+- Does not affect displayed report data
+- Use this to start fresh without clearing results
+
+### Report Controls
+
+**Clear Report**
+- Clears all displayed scan results (grade, findings, severity counts)
+- Resets run information (Run ID, auth branch, links)
+- Resets console log to "Waiting…"
+- Disables download buttons (back to greyed out state)
+- Always clickable, even when no data is loaded
+- Use this to clean up the UI after viewing results
+
+**Refresh from latest/report.json**
+- Manually reloads report data from GitHub Pages
+- Shows "Refreshing..." text while loading
+- Retries up to 5 times with 2-second delays
+- Enables download buttons if report loads successfully
+- Use this if auto-refresh fails or you want to load updated data
+
+**Download report.md** / **Download report.json**
+- Initially disabled (greyed out, 40% opacity)
+- Automatically enabled when report loads successfully
+- Downloads reports directly from `/latest/` on GitHub Pages
+- Both buttons are blue (primary color) to emphasize importance
+- Remain enabled until "Clear Report" is clicked
 
 ---
 

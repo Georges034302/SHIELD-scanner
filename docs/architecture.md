@@ -27,50 +27,50 @@ This document provides a technical deep dive into SHIELD Scanner's architecture,
 ### High-Level Overview
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     User Browser                             │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │  Static Site (GitHub Pages)                            │  │
-│  │  • index.html (UI)                                     │  │
-│  │  • app.js (Client logic)                               │  │
-│  │  • styles.css (Styling)                                │  │
-│  └────────────────┬───────────────────────────────────────┘  │
-│                   │ GitHub REST API (HTTPS)                  │
-└───────────────────┼──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     User Browser                                 │
+│  ┌────────────────────────────────────────────────────────┐      │
+│  │  Static Site (GitHub Pages)                            │      │
+│  │  • index.html (UI)                                     │      │
+│  │  • app.js (Client logic)                               │      │
+│  │  • styles.css (Styling)                                │      │
+│  └────────────────┬───────────────────────────────────────┘      │
+│                   │ GitHub REST API (HTTPS)                      │
+└───────────────────┼──────────────────────────────────────────────┘
                     │
                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  GitHub Platform                            │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐ │
-│  │  Git Repository          │  │  GitHub Actions          │ │
-│  │  • main branch           │  │  • scan.yml workflow     │ │
-│  │  • auth/<runId> branches │  │  • Ubuntu runners        │ │
-│  │  • Authorization files   │  │  • Native execution      │ │
-│  └──────────┬───────────────┘  └──────────┬───────────────┘ │
-│             │                             │                 │
-│             │  ┌────────────────────────┐ │                 │
-│             └─▶│  Artifacts Storage    │◀┘                 │
-│                │  • report.json         │                   │
-│                │  • report.md           │                   │
-│                │  • report.html         │                   │
-│                └────────────────────────┘                   │
-│                               │                             │
-│                               ▼                             │
-│                  ┌─────────────────────────┐                │
-│                  │  GitHub Pages CDN       │                │
-│                  │  • /latest/report.html  │                │
-│                  │  • /runs/<id>/...       │                │
-│                  └─────────────────────────┘                │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                  GitHub Platform                                │
+│  ┌──────────────────────────┐   ┌──────────────────────────┐    │
+│  │  Git Repository          │   │  GitHub Actions          │    │
+│  │  • main branch           │   │  • scan.yml workflow     │    │
+│  │  • auth/<runId> branches │   │  • Ubuntu runners        │    │
+│  │  • Authorization files   │   │  • Native execution      │    │
+│  └──────────┬───────────────┘   └──────────┬───────────────┘    │
+│             │                              │                    │
+│             │   ┌────────────────────────┐ │                    │
+│             └─▶│  Artifacts Storage     │◀┘                    │
+│                 │  • report.json         │                      │
+│                 │  • report.md           │                      │
+│                 │  • report.html         │                      │
+│                 └────────────────────────┘                      │
+│                               │                                 │
+│                               ▼                                 │
+│                  ┌─────────────────────────┐                    │
+│                  │  GitHub Pages CDN       │                    │
+│                  │  • /latest/report.html  │                    │
+│                  │  • /runs/<id>/...       │                    │
+│                  └─────────────────────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│            SHIELD Framework (Cloned at Runtime)             │
-│            (https://github.com/Georges034302/SHIELD-framework) │
-│  • 69 security checks across 6 steps                        │
-│  • Multi-format report generation                           │
-│  • WordPress authentication support                         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│            SHIELD Framework (Cloned at Runtime)                 │
+│            (https://github.com/Georges034302/SHIELD-framework)  │
+│  • 69 security checks across 6 steps                            │
+│  • Multi-format report generation                               │
+│  • WordPress authentication support                             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -82,19 +82,38 @@ This document provides a technical deep dive into SHIELD Scanner's architecture,
 #### index.html
 ```
 Purpose: User interface structure
-Key elements:
-  - Repository configuration inputs
-  - Scan parameter selectors
-  - Authorization file upload
-  - Status display panel
-  - Log output terminal
-  - Results links panel
+Key sections:
+  Sidebar (left):
+    - GitHub Connection panel (repository display)
+    - User GitHub Token panel (token input with security note)
+    - Scan Configuration panel (target, mode, profile, auth file)
+    - Run panel (run details and artifact links)
+    - Console panel (real-time log output)
+  
+  Main Content (right):
+    - Report Summary header with Clear Report button
+    - Download buttons (MD and JSON, state-managed)
+    - Summary cards (grade, mode, findings, last updated)
+    - Severity breakdown grid
+    - Top findings table
 ```
+
+**UI Layout:**
+- Sidebar-content split layout (380px sidebar, flexible content)
+- Card-based component design for visual separation
+- Responsive: Stacks vertically on mobile (<980px)
+- Dark theme optimized for long viewing sessions
+
+**Form Validation:**
+- HTML5 `required` attributes on critical fields
+- JavaScript content validation for auth files
+- Real-time error feedback via status messages
+- Pre-flight validation before API calls
 
 **Technical details:**
 - Pure HTML5, no templating engine
 - Progressive enhancement approach
-- Accessible form controls (ARIA labels)
+- Semantic HTML for accessibility
 - Responsive grid layout
 
 ---
@@ -102,48 +121,119 @@ Key elements:
 #### app.js
 ```javascript
 // Core responsibilities:
-1. GitHub API client wrapper (ghRequest)
-2. Authorization branch creation and file upload
-3. Workflow dispatch triggering
-4. Run discovery via polling
-5. Status monitoring loop
-6. UI state management
-7. Error handling and logging
+1. Input validation (token, URL, auth file content)
+2. GitHub API client wrapper (ghRequest)
+3. Authorization branch creation and file upload
+4. Workflow dispatch triggering
+5. Run discovery via polling
+6. Status monitoring loop
+7. Report loading with retry logic (exponential backoff)
+8. UI state management (buttons, fields, report display)
+9. Error handling and logging
 ```
 
 **Key functions:**
 
-| Function | Purpose | API Calls |
-|----------|---------|-----------|
-| `createAuthBranchAndCommitFile()` | Creates ephemeral branch, uploads auth file | 3 (get ref, create ref, put contents) |
-| `dispatchWorkflow()` | Triggers workflow_dispatch | 1 (POST dispatch) |
-| `findWorkflowRunForBranch()` | Polls for matching run | N (GET runs, every 5s) |
-| `pollRunUntilDone()` | Monitors run status | N (GET run/:id, every 6s) |
-| `ghRequest()` | Generic GitHub API wrapper | N/A (utility) |
+| Function | Purpose | Key Features |
+|----------|---------|-------------|
+| `validateAuthFile()` | Validates .txt auth file content | Checks for 4 required fields, detailed error messages |
+| `createBranch()` | Creates ephemeral auth branch | API: create ref |
+| `putFileContents()` | Uploads auth file to branch | API: put contents with base64 encoding |
+| `dispatchWorkflow()` | Triggers workflow_dispatch | API: POST dispatch |
+| `findDispatchedRun()` | Polls for matching run by name | API: GET runs, matches by auth_branch in run name |
+| `getRun()` | Monitors run status | API: GET run/:id |
+| `loadLatestReport()` | Loads report with retry logic | Exponential backoff, up to 10 retries |
+| `renderReport()` | Renders JSON to dashboard | Updates summary cards, severity grid, findings table |
+| `enableDownloadButtons()` | Enables MD/JSON downloads | Removes disabled class |
+| `disableDownloadButtons()` | Disables download buttons | Adds disabled class (greyed out) |
+| `resetUi()` | Clears input fields only | Resets form to defaults |
+| `clearReport()` | Clears report display | Resets all report data, disables downloads |
+| `refreshReport()` | Manual report refresh | Retry logic, button feedback |
 
-**State management:**
+**Validation Logic:**
+```javascript
+// Pre-flight validation sequence:
+1. Check token present (string length > 0)
+2. Check target URL present (string length > 0)
+3. If authorized mode:
+   a. Check file uploaded (not null)
+   b. Check file extension (.txt only)
+   c. Read file content as text
+   d. Validate presence of 4 required fields:
+      - Site to scan: [pattern]
+      - Organization: [pattern]
+      - Authorizer: [pattern]
+      - Admin login: [pattern]
+   e. Show detailed error if any field missing
+4. Only after validation passes: Clear sensitive fields from DOM
+5. Proceed with scan execution
+```
+
+**State Management:**
 - DOM-based state (no framework)
-- Persistent in browser session only
-- Log appending via `textContent`
-- Links updated via `innerHTML`
+- Download button states: disabled (initial) → enabled (after report loads) → disabled (on clear)
+- Input field clearing: After validation passes (security measure)
+- Report loading: Automatic with retry + manual refresh option
+- Console log: Append-only with ISO timestamps
+
+**Retry Logic:**
+```javascript
+// loadLatestReport() retry strategy:
+- Initial delay: 3 seconds
+- Max retries: 10 (for auto-load after scan)
+- Backoff: Exponential (delay *= 1.5 each retry)
+- Cache busting: Timestamp query parameter
+- Manual refresh: 5 retries with 2-second initial delay
+```
 
 ---
 
 #### styles.css
 ```css
 Design system:
-  - CSS custom properties (variables)
-  - System font stack
-  - Mobile-first responsive
-  - Card-based layout
-  - Status color coding
+  - CSS custom properties (variables) for theming
+  - System font stack for native look
+  - Dark theme (GitHub-inspired color palette)
+  - Card-based component layout
+  - Status color coding (severity badges)
+  - State-based button styles (.disabled, .primary, .link)
+  - Responsive breakpoints (mobile-first)
+```
+
+**Key CSS Features:**
+
+**Color Variables:**
+```css
+--primary: #238636 (green, for primary actions)
+--danger: #da3633 (red, for destructive actions)
+--link: #58a6ff (blue, for links and JSON download)
+--crit-bg: rgba(248, 81, 73, 0.12) (critical severity)
+--high-bg: rgba(251, 143, 68, 0.12) (high severity)
+--med-bg: rgba(245, 200, 66, 0.12) (medium severity)
+```
+
+**Button States:**
+```css
+.btn - Default grey button
+.btn.primary - Green button (primary actions)
+.btn.disabled - 40% opacity, not-allowed cursor, no pointer events
+.btn.link - Transparent with border (secondary actions)
+```
+
+**Layout:**
+```css
+.main-container - Flex container (horizontal split)
+.sidebar - 380px fixed width, scrollable
+.content - Flexible 1fr, scrollable
+@media (max-width: 980px) - Stack vertically
 ```
 
 **Performance optimizations:**
-- No external dependencies
-- Minimal CSS (~2KB)
-- No images in CSS
+- No external dependencies (no CDN calls)
+- Minimal CSS (~3KB minified)
+- No images in CSS (emoji for icons)
 - Fast first paint
+- Hardware-accelerated transforms for smoothness
 
 ---
 
@@ -753,6 +843,28 @@ GET /repos/{owner}/{repo}/actions/runs
 
 **Modern approach (GitHub Actions):**
 ```yaml
+- name: Prepare Pages content
+  shell: bash
+  run: |
+    mkdir -p pages/latest
+    
+    # Copy UI files to pages root
+    cp index.html app.js styles.css pages/
+    cp -r logos pages/
+    
+    # Copy all three report formats to latest/
+    cp output/report.json pages/latest/report.json
+    cp output/report.md pages/latest/report.md
+    cp output/report.html pages/latest/report.html
+    
+    # Also save to run-specific folder for history
+    SAFE_RUN="${{ inputs.auth_branch }}"
+    SAFE_RUN="${SAFE_RUN//\//_}"
+    mkdir -p "pages/runs/${SAFE_RUN}"
+    cp output/report.json "pages/runs/${SAFE_RUN}/report.json"
+    cp output/report.md "pages/runs/${SAFE_RUN}/report.md"
+    cp output/report.html "pages/runs/${SAFE_RUN}/report.html"
+
 - uses: actions/upload-pages-artifact@v3
   with:
     path: pages
@@ -760,22 +872,34 @@ GET /repos/{owner}/{repo}/actions/runs
 - uses: actions/deploy-pages@v4
 ```
 
-**Directory structure:**
+**Directory structure deployed to Pages:**
 ```
 pages/
+  ├── index.html               # Scanner UI
+  ├── app.js                   # Application logic
+  ├── styles.css               # Styling
+  ├── logos/                   # Brand assets
   ├── latest/
-  │   └── report.html          # Always latest scan
+  │   ├── report.json          # Latest scan (JSON format)
+  │   ├── report.md            # Latest scan (Markdown format)
+  │   └── report.html          # Latest scan (HTML format)
   └── runs/
       ├── auth_123_abc/
-      │   └── report.html      # Historical run 1
+      │   ├── report.json      # Historical run 1 (JSON)
+      │   ├── report.md        # Historical run 1 (MD)
+      │   └── report.html      # Historical run 1 (HTML)
       └── auth_456_def/
-          └── report.html      # Historical run 2
+          ├── report.json      # Historical run 2 (JSON)
+          ├── report.md        # Historical run 2 (MD)
+          └── report.html      # Historical run 2 (HTML)
 ```
 
 **Benefits:**
-- Versioned history (all runs preserved)
-- Consistent `/latest/` URL for automation
-- Direct linking to specific runs
+- All three report formats available via direct URLs
+- Versioned history (all runs preserved in /runs/)
+- Consistent `/latest/` URL for automation and UI
+- Direct linking to specific runs for audit trail
+- No artifact download needed for JSON/MD reports
 
 ---
 
@@ -783,17 +907,32 @@ pages/
 
 **Patterns:**
 ```
-https://<user>.github.io/<repo>/                    # Scanner UI
-https://<user>.github.io/<repo>/latest/report.html # Latest scan
-https://<user>.github.io/<repo>/runs/<id>/report.html # Specific run
+https://<user>.github.io/<repo>/                       # Scanner UI (index.html)
+https://<user>.github.io/<repo>/latest/report.html    # Latest scan (HTML)
+https://<user>.github.io/<repo>/latest/report.json    # Latest scan (JSON)
+https://<user>.github.io/<repo>/latest/report.md     # Latest scan (Markdown)
+https://<user>.github.io/<repo>/runs/<id>/report.html # Specific run (HTML)
+https://<user>.github.io/<repo>/runs/<id>/report.json # Specific run (JSON)
+https://<user>.github.io/<repo>/runs/<id>/report.md  # Specific run (MD)
 ```
 
 **URL generation:**
 ```javascript
-function pagesLatestUrl(owner, repo) {
-  return `https://${owner}.github.io/${repo}/latest/report.html`;
+// Used by app.js for fetching latest report
+function pagesLatestJsonUrl() {
+  return `latest/report.json?t=${Date.now()}`; // Relative path + cache bust
 }
+
+// Download links in UI
+<a href="latest/report.md" download>Download report.md</a>
+<a href="latest/report.json" download>Download report.json</a>
 ```
+
+**Download Button State Management:**
+- Buttons initially disabled (`.disabled` class, greyed out)
+- Auto-enabled when `loadLatestReport()` succeeds
+- Disabled again when "Clear Report" button clicked
+- CSS: `opacity: 0.4`, `cursor: not-allowed`, `pointer-events: none`
 
 ---
 
@@ -804,10 +943,35 @@ function pagesLatestUrl(owner, repo) {
 - Must wait up to 10 minutes for updates
 - Hard refresh bypasses browser cache, not CDN
 
-**Mitigation:**
-- Use `/runs/<id>/` URLs for immutable content
-- `/latest/` expected to have stale data
-- Add timestamp query param: `?t=<timestamp>`
+**Mitigation strategies implemented:**
+
+1. **Retry Logic with Exponential Backoff:**
+```javascript
+// Automatic retry after scan completion
+loadLatestReport(retries = 0, maxRetries = 10, delayMs = 3000)
+- Initial delay: 3 seconds
+- Max retries: 10 attempts
+- Backoff multiplier: 1.5x per retry
+- Total wait time: ~90 seconds max
+
+// Manual refresh (faster, fewer retries)
+refreshReport() → loadLatestReport(0, 5, 2000)
+- Initial delay: 2 seconds
+- Max retries: 5 attempts
+- User-friendly for quick checks
+```
+
+2. **Cache Busting:**
+```javascript
+fetch(`latest/report.json?t=${Date.now()}`, { cache: "no-store" })
+// Timestamp query parameter ensures fresh request
+// no-store prevents browser caching
+```
+
+3. **URL Immutability:**
+- Use `/runs/<id>/` URLs for immutable content (no retries needed)
+- `/latest/` expected to have slight delay (handled by retry logic)
+- Download links work immediately once enabled (files already deployed)
 
 ---
 
