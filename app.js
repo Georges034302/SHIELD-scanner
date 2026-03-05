@@ -283,6 +283,23 @@ function renderReport(report) {
   safeText($("sevInfo"), String(sevCounts.INFO ?? 0));
 
   renderFindingsTable(findings);
+  
+  // Enable download buttons once report is loaded
+  enableDownloadButtons();
+}
+
+function enableDownloadButtons() {
+  const mdBtn = $("downloadMd");
+  const jsonBtn = $("downloadJson");
+  if (mdBtn) mdBtn.classList.remove("disabled");
+  if (jsonBtn) jsonBtn.classList.remove("disabled");
+}
+
+function disableDownloadButtons() {
+  const mdBtn = $("downloadMd");
+  const jsonBtn = $("downloadJson");
+  if (mdBtn) mdBtn.classList.add("disabled");
+  if (jsonBtn) jsonBtn.classList.add("disabled");
 }
 
 async function loadLatestReport(retries = 0, maxRetries = 10, delayMs = 3000) {
@@ -525,6 +542,9 @@ function clearReport() {
   const tbody = $("findingsTbody");
   if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted">No data loaded yet.</td></tr>`;
   
+  // Disable download buttons
+  disableDownloadButtons();
+  
   logLine("Report summary cleared.");
 }
 
@@ -582,9 +602,13 @@ function wireEvents() {
   $("refreshBtn")?.addEventListener("click", refreshReport);
   $("clearReportBtn")?.addEventListener("click", clearReport);
 
+  // Ensure download buttons start disabled
+  disableDownloadButtons();
+
   // Load whatever latest report exists at page open (with minimal retries)
   loadLatestReport(0, 2, 1000).catch(() => {
     // Silent fail on initial load - user can manually refresh
+    // Download buttons remain disabled
   });
 }
 

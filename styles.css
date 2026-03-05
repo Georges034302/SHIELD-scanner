@@ -188,6 +188,12 @@ input::placeholder{ color: #6b7280; }
 
 .btn.primary:hover{ background:#2ea043; }
 
+.btn.disabled{
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn.danger{
   background: var(--danger);
   border-color: var(--danger-border);
