@@ -285,15 +285,32 @@ function renderReport(report) {
   renderFindingsTable(findings);
 }
 
-async function loadLatestReport() {
+async function loadLatestReport(retries = 0, maxRetries = 10, delayMs = 3000) {
   try {
-    const res = await fetch("latest/report.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`latest/report.json not available (${res.status})`);
+    const timestamp = Date.now(); // cache bust
+    const res = await fetch(`latest/report.json?t=${timestamp}`, { cache: "no-store" });
+    if (!res.ok) {
+      if (retries < maxRetries) {
+        const nextDelay = delayMs * Math.pow(1.5, retries); // exponential backoff
+        logLine(`latest/report.json not ready yet (${res.status}). Retrying in ${Math.round(nextDelay/1000)}s... (${retries + 1}/${maxRetries})`);
+        await new Promise((r) => setTimeout(r, nextDelay));
+        return loadLatestReport(retries + 1, maxRetries, delayMs);
+      }
+      throw new Error(`latest/report.json not available after ${maxRetries} retries (${res.status})`);
+    }
     const json = await res.json();
     renderReport(json);
-    logLine("Loaded latest/report.json and rendered summary.");
+    logLine("✓ Loaded latest/report.json and rendered summary.");
+    return true;
   } catch (e) {
-    logLine(`No latest report to render yet: ${e.message}`);
+    if (retries < maxRetries) {
+      const nextDelay = delayMs * Math.pow(1.5, retries);
+      logLine(`Error loading report: ${e.message}. Retrying in ${Math.round(nextDelay/1000)}s... (${retries + 1}/${maxRetries})`);
+      await new Promise((r) => setTimeout(r, nextDelay));
+      return loadLatestReport(retries + 1, maxRetries, delayMs);
+    }
+    logLine(`⚠ No latest report available: ${e.message}`);
+    return false;
   }
 }
 
@@ -394,9 +411,15 @@ async function startScan() {
     }
 
     // Refresh report summary from Pages latest/report.json
-    setStatus("Refreshing summary...");
-    await loadLatestReport();
-    setStatus("Done.");
+    setStatus("Waiting for Pages deployment...");
+    logLine("Workflow complete. Waiting for GitHub Pages to deploy reports...");
+    const loaded = await loadLatestReport();
+    if (loaded) {
+      setStatus("✓ Done - Report loaded successfully");
+    } else {
+      setStatus("⚠ Workflow complete but report not available yet");
+      logLine("⚠ Report may still be deploying. Click 'Refresh from JSON' to try again.");
+    }
 
   } catch (e) {
     setStatus(`Error: ${e.message}`);
@@ -437,6 +460,31 @@ function resetUi() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted">No data loaded yet.</td></tr>`;
 }
 
+async function refreshReport() {
+  const btn = $("refreshBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Refreshing...";
+  }
+  
+  setStatus("Refreshing from latest/report.json...");
+  logLine("Manually refreshing report...");
+  
+  try {
+    const loaded = await loadLatestReport(0, 5, 2000); // shorter retry for manual refresh
+    if (loaded) {
+      setStatus("✓ Report refreshed successfully");
+    } else {
+      setStatus("⚠ Report not available yet");
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Refresh from latest/report.json";
+    }
+  }
+}
+
 function wireEvents() {
   // Note: Repository is hardcoded in HTML as "Georges034302/SHIELD-scanner"
   // Auto-detection kept for potential future multi-repo support
@@ -463,10 +511,12 @@ function wireEvents() {
 
   $("startBtn")?.addEventListener("click", startScan);
   $("resetBtn")?.addEventListener("click", resetUi);
-  $("refreshBtn")?.addEventListener("click", loadLatestReport);
+  $("refreshBtn")?.addEventListener("click", refreshReport);
 
-  // Load whatever latest report exists at page open
-  loadLatestReport();
+  // Load whatever latest report exists at page open (with minimal retries)
+  loadLatestReport(0, 2, 1000).catch(() => {
+    // Silent fail on initial load - user can manually refresh
+  });
 }
 
 wireEvents();

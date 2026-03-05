@@ -117,13 +117,17 @@ jobs:
           cp index.html app.js styles.css pages/
           cp -r logos pages/
           
-          # Copy generated report to latest/
+          # Copy generated reports to latest/ (JSON, MD, and HTML)
+          cp output/report.json pages/latest/report.json
+          cp output/report.md pages/latest/report.md
           cp output/report.html pages/latest/report.html
           
           # Optional: keep a run history folder by run id (auth_branch label)
           SAFE_RUN="${{ inputs.auth_branch }}"
           SAFE_RUN="${SAFE_RUN//\//_}"
           mkdir -p "pages/runs/${SAFE_RUN}"
+          cp output/report.json "pages/runs/${SAFE_RUN}/report.json"
+          cp output/report.md "pages/runs/${SAFE_RUN}/report.md"
           cp output/report.html "pages/runs/${SAFE_RUN}/report.html"
 
       - name: Upload Pages artifact

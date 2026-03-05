@@ -41,18 +41,27 @@ function countsBy(arr, key){
   return out;
 }
 
+function normalizeSeverityClass(sev){
+  const s = String(sev || "info").toLowerCase();
+  // Map to CSS classes in template: critical, high, med, low, info
+  if (s === "medium") return "med";
+  return s;
+}
+
 function renderTable(rows){
   if(rows.length === 0) return "<p class='muted'>No findings.</p>";
   const head = "<tr><th>Severity</th><th>Result</th><th>Check</th><th>Confidence</th><th>Evidence</th></tr>";
-  const body = rows.map(r => (
-    `<tr>
-      <td><span class="sev sev-${esc(String(r.severity||"INFO")).toLowerCase()}">${esc(r.severity||"INFO")}</span></td>
+  const body = rows.map(r => {
+    const sevClass = normalizeSeverityClass(r.severity);
+    const sevDisplay = String(r.severity || "INFO").toUpperCase();
+    return `<tr>
+      <td><span class="sev sev-${sevClass}">${esc(sevDisplay)}</span></td>
       <td>${esc(r.result||"")}</td>
       <td><code>${esc(r.check_id||"")}</code> — ${esc(r.title||"")}</td>
       <td>${esc(r.confidence||"")}</td>
       <td class="evidence">${esc(r.evidence||"")}</td>
-    </tr>`
-  )).join("\n");
+    </tr>`;
+  }).join("\n");
   return `<table>${head}${body}</table>`;
 }
 
@@ -76,8 +85,13 @@ function main(){
   const finished = meta.finished_at ?? meta.end_time ?? "";
 
   const highish = findings
-    .filter(f => ["CRITICAL","HIGH"].includes(String(f.severity||"").toUpperCase()))
-    .sort((a,b) => (["CRITICAL","HIGH","MED","LOW","INFO"].indexOf(String(a.severity||"").toUpperCase()) - ["CRITICAL","HIGH","MED","LOW","INFO"].indexOf(String(b.severity||"").toUpperCase())))
+    .filter(f => ["CRITICAL","HIGH","critical","high"].includes(String(f.severity||"")))
+    .sort((a,b) => {
+      const order = ["CRITICAL","critical","HIGH","high","MEDIUM","medium","MED","med","LOW","low","INFO","info"];
+      const aIdx = order.indexOf(String(a.severity||""));
+      const bIdx = order.indexOf(String(b.severity||""));
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    })
     .slice(0, 20);
 
   const byStep = countsBy(findings, "step");
