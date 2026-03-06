@@ -51,6 +51,25 @@ function linkHtml(url, label) {
   return `<a href="${url}" target="_blank" rel="noreferrer">${label}</a>`;
 }
 
+function latestReportUrl(fileName) {
+  return new URL(`latest/${fileName}`, window.location.href).toString();
+}
+
+function configureReportLinks() {
+  const latestJson = latestReportUrl("report.json");
+  const latestMd = latestReportUrl("report.md");
+
+  const openJson = $("openLatestJson");
+  const openMd = $("openLatestMd");
+  const downloadJson = $("downloadJson");
+  const downloadMd = $("downloadMd");
+
+  if (openJson) openJson.href = latestJson;
+  if (openMd) openMd.href = latestMd;
+  if (downloadJson) downloadJson.href = latestJson;
+  if (downloadMd) downloadMd.href = latestMd;
+}
+
 function ensure(cond, msg) {
   if (!cond) throw new Error(msg);
 }
@@ -559,7 +578,8 @@ function disableDownloadButtons() {
 async function loadLatestReport(retries = 0, maxRetries = 10, delayMs = 3000) {
   try {
     const timestamp = Date.now(); // cache bust
-    const res = await fetch(`latest/report.json?t=${timestamp}`, { cache: "no-store" });
+    const reportJsonUrl = `${latestReportUrl("report.json")}?t=${timestamp}`;
+    const res = await fetch(reportJsonUrl, { cache: "no-store" });
     if (!res.ok) {
       if (retries < maxRetries) {
         const nextDelay = delayMs * Math.pow(1.5, retries); // exponential backoff
@@ -848,6 +868,8 @@ async function refreshReport() {
 }
 
 function wireEvents() {
+  configureReportLinks();
+
   // Note: Repository is hardcoded in HTML as "Georges034302/SHIELD-scanner"
   // Auto-detection kept for potential future multi-repo support
   const repoDisplay = $("repoDisplay");
