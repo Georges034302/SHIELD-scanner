@@ -15,6 +15,10 @@
  */
 const fs = require("fs");
 
+const CHECK_NAME_MAX_LEN = 96;
+const EVIDENCE_MAX_LEN = 140;
+const RECOMMENDATION_MAX_LEN = 110;
+
 function must(obj, path){
   const parts = path.split(".");
   let cur = obj;
@@ -48,18 +52,61 @@ function normalizeSeverityClass(sev){
   return s;
 }
 
+function firstNonEmptyString(values, fallback = ""){
+  for(const v of values){
+    if(typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return fallback;
+}
+
+function toBriefText(value, maxLen = EVIDENCE_MAX_LEN){
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if(!normalized) return "—";
+  if(normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, maxLen - 1).trim()}...`;
+}
+
 function renderTable(rows){
   if(rows.length === 0) return "<p class='muted'>No findings.</p>";
-  const head = "<tr><th>Severity</th><th>Result</th><th>Check</th><th>Confidence</th><th>Evidence</th></tr>";
+  const head = "<tr><th>Severity</th><th>Result</th><th>Check (Test Executed)</th><th>Evidence</th><th>Recommendation</th></tr>";
   const body = rows.map(r => {
     const sevClass = normalizeSeverityClass(r.severity);
     const sevDisplay = String(r.severity || "INFO").toUpperCase();
+    const checkId = firstNonEmptyString([r.check_id, r.id]);
+    const checkName = firstNonEmptyString([
+      r.title,
+      r.check,
+      r.test,
+      r.test_name,
+      r.name,
+      r.check_name,
+    ], "Unnamed check");
+    const result = firstNonEmptyString([r.result, r.status, r.outcome], "—");
+    const evidence = toBriefText(firstNonEmptyString([
+      r.evidence,
+      r.details,
+      r.observed,
+      r.message,
+      r.output,
+    ]), EVIDENCE_MAX_LEN);
+    const recommendation = toBriefText(firstNonEmptyString([
+      r.recommendation,
+      r.remediation,
+      r.fix,
+      r.mitigation,
+      r.next_step,
+      r.guidance,
+    ], "See report.md for full remediation"), RECOMMENDATION_MAX_LEN);
+    const checkNameBrief = toBriefText(checkName, CHECK_NAME_MAX_LEN);
+    const checkCell = checkId
+      ? `<code>${esc(checkId)}</code> ${esc(checkNameBrief)}`
+      : esc(checkNameBrief);
     return `<tr>
       <td><span class="sev sev-${sevClass}">${esc(sevDisplay)}</span></td>
-      <td>${esc(r.result||"")}</td>
-      <td><code>${esc(r.check_id||"")}</code> — ${esc(r.title||"")}</td>
-      <td>${esc(r.confidence||"")}</td>
-      <td class="evidence">${esc(r.evidence||"")}</td>
+      <td>${esc(result)}</td>
+      <td>${checkCell}</td>
+      <td class="evidence">${esc(evidence)}</td>
+      <td class="recommendation">${esc(recommendation)}</td>
     </tr>`;
   }).join("\n");
   return `<table>${head}${body}</table>`;

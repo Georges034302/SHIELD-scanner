@@ -18,6 +18,13 @@
 const $ = (id) => document.getElementById(id);
 
 const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "UNKNOWN"];
+const FINDINGS_LIMIT_OPTIONS = [20, 50, 100, 200];
+const DEFAULT_FINDINGS_LIMIT = 20;
+const CHECK_NAME_MAX_LEN = 96;
+const EVIDENCE_MAX_LEN = 140;
+const RECOMMENDATION_MAX_LEN = 110;
+
+let lastReport = null;
 
 function nowIso() {
   return new Date().toISOString();
@@ -218,6 +225,37 @@ function severityRank(sev) {
   return idx === -1 ? SEVERITY_ORDER.length : idx;
 }
 
+function firstNonEmptyString(values, fallback = "") {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return fallback;
+}
+
+function toBriefText(value, maxLen = 140) {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "—";
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, maxLen - 1).trim()}...`;
+}
+
+function getFindingsLimit() {
+  const select = $("findingsLimit");
+  const parsed = Number(select?.value || DEFAULT_FINDINGS_LIMIT);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_FINDINGS_LIMIT;
+  return parsed;
+}
+
+function updateFindingsMeta(total, shown) {
+  const el = $("findingsMeta");
+  if (!el) return;
+  if (!total) {
+    el.textContent = "No findings loaded.";
+    return;
+  }
+  el.textContent = `Showing ${shown} of ${total} findings (sorted by severity).`;
+}
+
 function renderFindingsTable(findings) {
   const tbody = $("findingsTbody");
   if (!tbody) return;
@@ -226,29 +264,58 @@ function renderFindingsTable(findings) {
 
   if (!Array.isArray(findings) || findings.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="muted">No findings.</td></tr>`;
+    updateFindingsMeta(0, 0);
     return;
   }
+
+  const limit = getFindingsLimit();
 
   const top = findings
     .slice()
     .sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
-    .slice(0, 25);
+    .slice(0, limit);
+
+  updateFindingsMeta(findings.length, top.length);
 
   for (const f of top) {
     const sev = String(f.severity || "INFO").toUpperCase();
-    const checkId = f.check_id || f.id || "";
-    const title = f.title || "";
-    const result = f.result || f.status || "";
-    const conf = f.confidence || "";
-    const evidence = f.evidence || f.details || "";
+    const checkId = firstNonEmptyString([f.check_id, f.id]);
+    const checkName = firstNonEmptyString([
+      f.title,
+      f.check,
+      f.test,
+      f.test_name,
+      f.name,
+      f.check_name,
+    ], "Unnamed check");
+    const result = firstNonEmptyString([f.result, f.status, f.outcome], "—");
+    const evidence = toBriefText(
+      firstNonEmptyString([f.evidence, f.details, f.observed, f.message, f.output]),
+      EVIDENCE_MAX_LEN
+    );
+    const recommendation = toBriefText(
+      firstNonEmptyString([
+        f.recommendation,
+        f.remediation,
+        f.fix,
+        f.mitigation,
+        f.next_step,
+        f.guidance,
+      ], "See report.md for full remediation"),
+      RECOMMENDATION_MAX_LEN
+    );
+    const checkNameBrief = toBriefText(checkName, CHECK_NAME_MAX_LEN);
+    const checkCell = checkId
+      ? `<code>${escapeHtml(checkId)}</code> ${escapeHtml(checkNameBrief)}`
+      : escapeHtml(checkNameBrief);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${sev}</td>
-      <td><code>${escapeHtml(checkId)}</code> ${escapeHtml(title)}</td>
       <td>${escapeHtml(result)}</td>
-      <td>${escapeHtml(conf)}</td>
-      <td class="muted">${escapeHtml(evidence)}</td>
+      <td>${checkCell}</td>
+      <td class="muted evidence-cell">${escapeHtml(evidence)}</td>
+      <td class="recommendation-cell">${escapeHtml(recommendation)}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -264,6 +331,7 @@ function escapeHtml(s) {
 
 function renderReport(report) {
   // Be permissive about schema while remaining strict about not inventing fields.
+  lastReport = report;
   const meta = report?.meta || {};
   const findings = Array.isArray(report?.findings) ? report.findings : [];
 
@@ -541,6 +609,8 @@ function clearReport() {
 
   const tbody = $("findingsTbody");
   if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted">No data loaded yet.</td></tr>`;
+  updateFindingsMeta(0, 0);
+  lastReport = null;
   
   // Disable download buttons
   disableDownloadButtons();
@@ -601,6 +671,19 @@ function wireEvents() {
   $("resetBtn")?.addEventListener("click", resetUi);
   $("refreshBtn")?.addEventListener("click", refreshReport);
   $("clearReportBtn")?.addEventListener("click", clearReport);
+
+  const findingsLimitSelect = $("findingsLimit");
+  if (findingsLimitSelect) {
+    findingsLimitSelect.value = String(DEFAULT_FINDINGS_LIMIT);
+    findingsLimitSelect.addEventListener("change", () => {
+      const selected = Number(findingsLimitSelect.value);
+      if (!FINDINGS_LIMIT_OPTIONS.includes(selected)) {
+        findingsLimitSelect.value = String(DEFAULT_FINDINGS_LIMIT);
+      }
+      const findings = Array.isArray(lastReport?.findings) ? lastReport.findings : [];
+      renderFindingsTable(findings);
+    });
+  }
 
   // Ensure download buttons start disabled
   disableDownloadButtons();

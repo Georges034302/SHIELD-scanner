@@ -75,9 +75,9 @@ jq -s '
 }' "${OUTPUT_DIR}"/step*/*.json > "${OUTPUT_DIR}/report.json.tmp"
 
 # Calculate grade based on severity counts
-CRITICAL=$(jq '[.findings[] | select(.severity=="critical")] | length' "${OUTPUT_DIR}/report.json.tmp")
-HIGH=$(jq '[.findings[] | select(.severity=="high")] | length' "${OUTPUT_DIR}/report.json.tmp")
-MEDIUM=$(jq '[.findings[] | select(.severity=="medium")] | length' "${OUTPUT_DIR}/report.json.tmp")
+CRITICAL=$(jq '[.findings[] | select((.severity // "" | ascii_downcase)=="critical")] | length' "${OUTPUT_DIR}/report.json.tmp")
+HIGH=$(jq '[.findings[] | select((.severity // "" | ascii_downcase)=="high")] | length' "${OUTPUT_DIR}/report.json.tmp")
+MEDIUM=$(jq '[.findings[] | select((.severity // "" | ascii_downcase)=="medium")] | length' "${OUTPUT_DIR}/report.json.tmp")
 
 GRADE="A"
 if [[ ${CRITICAL} -gt 0 ]]; then
