@@ -66,7 +66,107 @@ function toBriefText(value, maxLen = EVIDENCE_MAX_LEN){
   return `${normalized.slice(0, maxLen - 1).trim()}...`;
 }
 
-function renderTable(rows){
+function normalizeKey(key){
+  return String(key ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function scalarToText(value){
+  if(value === null || value === undefined) return "";
+  if(typeof value === "string") return value.trim();
+  if(typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function valueToText(value){
+  const scalar = scalarToText(value);
+  if(scalar) return scalar;
+
+  if(Array.isArray(value)){
+    return value
+      .map(item => valueToText(item))
+      .filter(Boolean)
+      .slice(0, 6)
+      .join("; ");
+  }
+
+  if(value && typeof value === "object"){
+    const preferred = ["summary", "message", "detail", "details", "value", "text", "finding"];
+    for(const wanted of preferred){
+      for(const [k, v] of Object.entries(value)){
+        if(normalizeKey(k) === normalizeKey(wanted)){
+          const text = valueToText(v);
+          if(text) return text;
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
+function getOwnFieldText(obj, keys){
+  if(!obj || typeof obj !== "object") return "";
+  const wanted = new Set(keys.map(k => normalizeKey(k)));
+  for(const [k, v] of Object.entries(obj)){
+    if(!wanted.has(normalizeKey(k))) continue;
+    const text = valueToText(v);
+    if(text) return text;
+  }
+  return "";
+}
+
+function findFieldTextDeep(root, keys, maxDepth = 4){
+  const seen = new Set();
+
+  function visit(node, depth){
+    if(!node || typeof node !== "object" || depth > maxDepth) return "";
+    if(seen.has(node)) return "";
+    seen.add(node);
+
+    const direct = getOwnFieldText(node, keys);
+    if(direct) return direct;
+
+    for(const value of Object.values(node)){
+      if(value && typeof value === "object"){
+        const found = visit(value, depth + 1);
+        if(found) return found;
+      }
+    }
+
+    return "";
+  }
+
+  return visit(root, 0);
+}
+
+function buildRecommendationIndex(report){
+  const index = new Map();
+  const seen = new Set();
+
+  function visit(node, depth){
+    if(!node || typeof node !== "object" || depth > 7) return;
+    if(seen.has(node)) return;
+    seen.add(node);
+
+    if(!Array.isArray(node)){
+      const checkId = firstNonEmptyString([valueToText(node.check_id), valueToText(node.id)]).toLowerCase();
+      const recommendation = firstNonEmptyString([
+        getOwnFieldText(node, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+        findFieldTextDeep(node, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"], 2),
+      ]);
+      if(checkId && recommendation && !index.has(checkId)) index.set(checkId, recommendation);
+    }
+
+    for(const value of Object.values(node)){
+      if(value && typeof value === "object") visit(value, depth + 1);
+    }
+  }
+
+  visit(report, 0);
+  return index;
+}
+
+function renderTable(rows, recommendationIndex){
   if(rows.length === 0) return "<p class='muted'>No findings.</p>";
   const head = "<tr><th>Severity</th><th>Result</th><th>Check (Test Executed)</th><th>Evidence</th><th>Recommendation</th></tr>";
   const body = rows.map(r => {
@@ -83,20 +183,15 @@ function renderTable(rows){
     ], "Unnamed check");
     const result = firstNonEmptyString([r.result, r.status, r.outcome], "—");
     const evidence = toBriefText(firstNonEmptyString([
-      r.evidence,
-      r.details,
-      r.observed,
-      r.message,
-      r.output,
-    ]), EVIDENCE_MAX_LEN);
+      getOwnFieldText(r, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      findFieldTextDeep(r, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+    ], "Not provided in JSON"), EVIDENCE_MAX_LEN);
+    const checkIdLower = checkId.toLowerCase();
     const recommendation = toBriefText(firstNonEmptyString([
-      r.recommendation,
-      r.remediation,
-      r.fix,
-      r.mitigation,
-      r.next_step,
-      r.guidance,
-    ], "See report.md for full remediation"), RECOMMENDATION_MAX_LEN);
+      getOwnFieldText(r, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+      findFieldTextDeep(r, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+      recommendationIndex.get(checkIdLower) || "",
+    ], "Not provided in JSON"), RECOMMENDATION_MAX_LEN);
     const checkNameBrief = toBriefText(checkName, CHECK_NAME_MAX_LEN);
     const checkCell = checkId
       ? `<code>${esc(checkId)}</code> ${esc(checkNameBrief)}`
@@ -124,6 +219,7 @@ function main(){
   // Minimal required schema
   const meta = must(report, "meta");
   const findings = must(report, "findings");
+  const recommendationIndex = buildRecommendationIndex(report);
 
   const grade = meta.grade ?? meta.score?.grade ?? "—";
   const score = meta.score ?? meta.score?.value ?? "—";
@@ -155,7 +251,7 @@ function main(){
     .replaceAll("{{FINISHED}}", esc(finished))
     .replaceAll("{{STEPS}}", stepsHtml || "<li class='muted'>No data</li>")
     .replaceAll("{{SEVERITIES}}", sevHtml || "<li class='muted'>No data</li>")
-    .replaceAll("{{TOP_FINDINGS_TABLE}}", renderTable(highish));
+    .replaceAll("{{TOP_FINDINGS_TABLE}}", renderTable(highish, recommendationIndex));
 
   fs.writeFileSync(outPath, html, "utf8");
   console.log(`Wrote ${outPath}`);

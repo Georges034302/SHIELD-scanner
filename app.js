@@ -25,6 +25,7 @@ const EVIDENCE_MAX_LEN = 140;
 const RECOMMENDATION_MAX_LEN = 110;
 
 let lastReport = null;
+let recommendationIndex = new Map();
 
 function nowIso() {
   return new Date().toISOString();
@@ -239,6 +240,126 @@ function toBriefText(value, maxLen = 140) {
   return `${normalized.slice(0, maxLen - 1).trim()}...`;
 }
 
+function normalizeKey(key) {
+  return String(key ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function scalarToText(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function valueToText(value) {
+  const scalar = scalarToText(value);
+  if (scalar) return scalar;
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => valueToText(item))
+      .filter((item) => typeof item === "string" && item.length > 0)
+      .slice(0, 6);
+    return parts.join("; ");
+  }
+
+  if (value && typeof value === "object") {
+    const preferred = ["summary", "message", "detail", "details", "value", "text", "finding"];
+    for (const key of preferred) {
+      for (const [k, v] of Object.entries(value)) {
+        if (normalizeKey(k) === normalizeKey(key)) {
+          const text = valueToText(v);
+          if (text) return text;
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
+function getOwnFieldText(obj, keyCandidates) {
+  if (!obj || typeof obj !== "object") return "";
+  const wanted = new Set(keyCandidates.map((k) => normalizeKey(k)));
+  for (const [key, value] of Object.entries(obj)) {
+    if (!wanted.has(normalizeKey(key))) continue;
+    const text = valueToText(value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function findFieldTextDeep(root, keyCandidates, maxDepth = 4) {
+  const wanted = new Set(keyCandidates.map((k) => normalizeKey(k)));
+  const seen = new Set();
+
+  function visit(node, depth) {
+    if (!node || depth > maxDepth) return "";
+    if (typeof node !== "object") return "";
+    if (seen.has(node)) return "";
+    seen.add(node);
+
+    const direct = getOwnFieldText(node, keyCandidates);
+    if (direct) return direct;
+
+    for (const value of Object.values(node)) {
+      if (typeof value === "object" && value !== null) {
+        const nested = visit(value, depth + 1);
+        if (nested) return nested;
+      }
+    }
+    return "";
+  }
+
+  if (!root || typeof root !== "object" || wanted.size === 0) return "";
+  return visit(root, 0);
+}
+
+function getRecommendationForFinding(f) {
+  const direct = firstNonEmptyString([
+    getOwnFieldText(f, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+    findFieldTextDeep(f, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+  ]);
+  if (direct) return direct;
+
+  const checkId = firstNonEmptyString([f?.check_id, f?.id]).toLowerCase();
+  if (checkId && recommendationIndex.has(checkId)) {
+    return recommendationIndex.get(checkId);
+  }
+  return "";
+}
+
+function buildRecommendationIndex(report) {
+  const index = new Map();
+  const seen = new Set();
+
+  function visit(node, depth) {
+    if (!node || typeof node !== "object" || depth > 7) return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (!Array.isArray(node)) {
+      const checkId = firstNonEmptyString([valueToText(node.check_id), valueToText(node.id)]).toLowerCase();
+      const recommendation = firstNonEmptyString([
+        getOwnFieldText(node, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
+        findFieldTextDeep(node, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"], 2),
+      ]);
+      if (checkId && recommendation && !index.has(checkId)) {
+        index.set(checkId, recommendation);
+      }
+    }
+
+    for (const value of Object.values(node)) {
+      if (typeof value === "object" && value !== null) {
+        visit(value, depth + 1);
+      }
+    }
+  }
+
+  visit(report, 0);
+  return index;
+}
+
 function getFindingsLimit() {
   const select = $("findingsLimit");
   const parsed = Number(select?.value || DEFAULT_FINDINGS_LIMIT);
@@ -289,19 +410,14 @@ function renderFindingsTable(findings) {
       f.check_name,
     ], "Unnamed check");
     const result = firstNonEmptyString([f.result, f.status, f.outcome], "—");
-    const evidence = toBriefText(
-      firstNonEmptyString([f.evidence, f.details, f.observed, f.message, f.output]),
-      EVIDENCE_MAX_LEN
-    );
+    const evidence = toBriefText(firstNonEmptyString([
+      getOwnFieldText(f, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      findFieldTextDeep(f, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+    ], "Not provided in JSON"), EVIDENCE_MAX_LEN);
     const recommendation = toBriefText(
       firstNonEmptyString([
-        f.recommendation,
-        f.remediation,
-        f.fix,
-        f.mitigation,
-        f.next_step,
-        f.guidance,
-      ], "See report.md for full remediation"),
+        getRecommendationForFinding(f),
+      ], "Not provided in JSON"),
       RECOMMENDATION_MAX_LEN
     );
     const checkNameBrief = toBriefText(checkName, CHECK_NAME_MAX_LEN);
@@ -332,6 +448,7 @@ function escapeHtml(s) {
 function renderReport(report) {
   // Be permissive about schema while remaining strict about not inventing fields.
   lastReport = report;
+  recommendationIndex = buildRecommendationIndex(report);
   const meta = report?.meta || {};
   const findings = Array.isArray(report?.findings) ? report.findings : [];
 
