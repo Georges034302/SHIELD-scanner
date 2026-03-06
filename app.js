@@ -161,6 +161,62 @@ async function getRun(token, owner, repo, runId) {
   return ghRequest(token, "GET", `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}`);
 }
 
+async function listOpenPullRequestsForHead(token, owner, repo, headOwner, headBranch) {
+  const query = new URLSearchParams({
+    state: "open",
+    head: `${headOwner}:${headBranch}`,
+    per_page: "100",
+  });
+  return ghRequest(
+    token,
+    "GET",
+    `https://api.github.com/repos/${owner}/${repo}/pulls?${query.toString()}`
+  );
+}
+
+async function closePullRequest(token, owner, repo, prNumber) {
+  await ghRequest(
+    token,
+    "PATCH",
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+    { state: "closed" }
+  );
+}
+
+async function deleteBranch(token, owner, repo, branchName) {
+  await ghRequest(
+    token,
+    "DELETE",
+    `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(branchName)}`
+  );
+}
+
+async function cleanupEphemeralAuthBranch({ token, owner, repo, branchName }) {
+  logLine(`Cleanup: checking open PRs for ${branchName}...`);
+  const prs = await listOpenPullRequestsForHead(token, owner, repo, owner, branchName);
+  const items = Array.isArray(prs) ? prs : [];
+
+  for (const pr of items) {
+    try {
+      await closePullRequest(token, owner, repo, pr.number);
+      logLine(`Cleanup: closed PR #${pr.number} from ${branchName}.`);
+    } catch (e) {
+      logLine(`Cleanup warning: failed to close PR #${pr.number}: ${e.message}`);
+    }
+  }
+
+  try {
+    await deleteBranch(token, owner, repo, branchName);
+    logLine(`Cleanup: deleted branch ${branchName}.`);
+  } catch (e) {
+    if (String(e.message || "").includes("404")) {
+      logLine(`Cleanup: branch ${branchName} already removed.`);
+      return;
+    }
+    throw e;
+  }
+}
+
 /**
  * Find the workflow run created for this submission.
  * Strategy:
@@ -316,6 +372,19 @@ function findFieldTextDeep(root, keyCandidates, maxDepth = 4) {
 }
 
 function getRecommendationForFinding(f) {
+  const expected = firstNonEmptyString([
+    getOwnFieldText(f, ["expected"]),
+    findFieldTextDeep(f, ["expected"]),
+  ]);
+  const remediationId = firstNonEmptyString([
+    scalarToText(f?.remediation_id),
+    scalarToText(f?.remediationId),
+  ]);
+
+  if (expected && remediationId) return `${expected} (${remediationId})`;
+  if (expected) return expected;
+  if (remediationId) return `Follow remediation ${remediationId}.`;
+
   const direct = firstNonEmptyString([
     getOwnFieldText(f, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
     findFieldTextDeep(f, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
@@ -411,8 +480,8 @@ function renderFindingsTable(findings) {
     ], "Unnamed check");
     const result = firstNonEmptyString([f.result, f.status, f.outcome], "—");
     const evidence = toBriefText(firstNonEmptyString([
-      getOwnFieldText(f, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
-      findFieldTextDeep(f, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      getOwnFieldText(f, ["found", "evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      findFieldTextDeep(f, ["found", "evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
     ], "Not provided in JSON"), EVIDENCE_MAX_LEN);
     const recommendation = toBriefText(
       firstNonEmptyString([
@@ -570,7 +639,11 @@ async function validateAuthFile(file) {
 async function startScan() {
   $("startBtn").disabled = true;
   $("log").textContent = "";
+  let finalStatusMessage = "Idle";
   setStatus("Validating input...");
+  finalStatusMessage = "Validating input...";
+
+  let cleanupContext = null;
 
   try {
     const repoFull = $("repoDisplay").textContent.trim();
@@ -633,6 +706,8 @@ async function startScan() {
       const base64 = await b64FromFile(authFile);
       logLine(`Committing authorization to ${authPath}...`);
       await putFileContents(token, owner, repo, authPath, authBranch, `Upload authorization (${runId})`, base64);
+
+      cleanupContext = { token, owner, repo, branchName: authBranch };
     }
 
     // Dispatch workflow
@@ -672,16 +747,28 @@ async function startScan() {
     logLine("Workflow complete. Waiting for GitHub Pages to deploy reports...");
     const loaded = await loadLatestReport();
     if (loaded) {
-      setStatus("✓ Done - Report loaded successfully");
+      finalStatusMessage = "✓ Done - Report loaded successfully";
+      setStatus(finalStatusMessage);
     } else {
-      setStatus("⚠ Workflow complete but report not available yet");
+      finalStatusMessage = "⚠ Workflow complete but report not available yet";
+      setStatus(finalStatusMessage);
       logLine("⚠ Report may still be deploying. Click 'Refresh from JSON' to try again.");
     }
 
   } catch (e) {
-    setStatus(`Error: ${e.message}`);
+    finalStatusMessage = `Error: ${e.message}`;
+    setStatus(finalStatusMessage);
     logLine(`ERROR: ${e.message}`);
   } finally {
+    if (cleanupContext) {
+      try {
+        setStatus("Finalizing cleanup...");
+        await cleanupEphemeralAuthBranch(cleanupContext);
+      } catch (e) {
+        logLine(`Cleanup warning: ${e.message}`);
+      }
+    }
+    setStatus(finalStatusMessage);
     $("startBtn").disabled = false;
   }
 }

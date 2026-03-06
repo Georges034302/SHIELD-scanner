@@ -183,11 +183,23 @@ function renderTable(rows, recommendationIndex){
     ], "Unnamed check");
     const result = firstNonEmptyString([r.result, r.status, r.outcome], "—");
     const evidence = toBriefText(firstNonEmptyString([
-      getOwnFieldText(r, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
-      findFieldTextDeep(r, ["evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      getOwnFieldText(r, ["found", "evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
+      findFieldTextDeep(r, ["found", "evidence", "finding", "details", "detail", "observed", "message", "output", "proof", "summary", "description"]),
     ], "Not provided in JSON"), EVIDENCE_MAX_LEN);
     const checkIdLower = checkId.toLowerCase();
+    const expected = firstNonEmptyString([
+      getOwnFieldText(r, ["expected"]),
+      findFieldTextDeep(r, ["expected"]),
+    ]);
+    const remediationId = firstNonEmptyString([
+      scalarToText(r.remediation_id),
+      scalarToText(r.remediationId),
+    ]);
+    const expectedRecommendation = expected && remediationId
+      ? `${expected} (${remediationId})`
+      : (expected || (remediationId ? `Follow remediation ${remediationId}.` : ""));
     const recommendation = toBriefText(firstNonEmptyString([
+      expectedRecommendation,
       getOwnFieldText(r, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
       findFieldTextDeep(r, ["recommendation", "remediation", "fix", "mitigation", "next_step", "guidance", "action", "resolution", "solution"]),
       recommendationIndex.get(checkIdLower) || "",
