@@ -252,7 +252,4 @@ Copyright © 2026 Georges Bou Ghantous. All Rights Reserved. — see [LICENSE](L
 
 ---
 
-<br>
-<sub><i>© 2026 SHIELD Scanner v1.0 &nbsp;|&nbsp; <a href="https://github.com/Georges034302">Georges Bou Ghantous</a></i></sub>
-
----
+<sub><i><span style="color:#B0B0B0">👤 Author: Dr. Georges Bou Ghantous</span></i></sub>
